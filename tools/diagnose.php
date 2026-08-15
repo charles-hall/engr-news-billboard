@@ -2,7 +2,7 @@
 /**
  * NC State Billboard News Slides - deployment diagnostic
  *
- * Open https://YOUR-SERVER/billboard/tools/diagnose.php in a browser.
+ * Open https://billboard.engr.it/news-slides/tools/diagnose.php in a browser.
  *
  * Tests every configured department from THIS server and reports what works,
  * what does not, and how long each path takes. Timings from your own server are

@@ -30,7 +30,7 @@ and bottom of the frame, with a progress line and story dots in the footer.
 ## Quick start
 
 ```
-https://YOUR-SERVER/billboard/index.html?site=csc&count=5&dwell=12
+https://billboard.engr.it/news-slides/index.html?site=csc&count=5&dwell=12
 ```
 
 That URL cycles the five newest Computer Science stories, twelve seconds each.
@@ -41,7 +41,7 @@ In the **Add URL** dialog:
 
 | Field | Value |
 | --- | --- |
-| URL | `https://YOUR-SERVER/billboard/index.html?site=csc&count=5&dwell=12` |
+| URL | `https://billboard.engr.it/news-slides/index.html?site=csc&count=5&dwell=12` |
 | Title | Computer Science News |
 | Number of seconds to display slide | `60` |
 | Do you want the slide to reload after it has been displayed? | **Yes** |
@@ -112,7 +112,7 @@ apply, and captions are short by design because hashtag-heavy caption text reads
 poorly from across a lobby.
 
 ```
-https://YOUR-SERVER/billboard/instagram.html?site=csc&count=4
+https://billboard.engr.it/news-slides/instagram.html?site=csc&count=4
 ```
 
 Billboard settings: 20 seconds, reload **Yes**. There is nothing to cycle through,
@@ -172,7 +172,7 @@ picks up the mirrored copies on the next pass.
 saw. Add `&debug=1` to get the same information as a normal response:
 
 ```
-https://YOUR-SERVER/billboard/api/instagram.php?site=ece&debug=1
+https://billboard.engr.it/news-slides/api/instagram.php?site=ece&debug=1
 ```
 
 ```json
@@ -281,8 +281,10 @@ price, and stale-while-revalidate needs PHP-FPM, which Plesk uses by default.
 **Websites & Domains > Scheduled Tasks > Add Task**:
 
 - Task type: **Run a command**
-- Command: `/bin/sh /var/www/vhosts/YOUR-DOMAIN/httpdocs/billboard/tools/warm.sh`
+- Command: `/bin/sh /var/www/vhosts/ece.ncsu.edu/billboard.engr.it/news-slides/tools/warm.sh`
 - Run: every 10 minutes (`*/10 * * * *`)
+
+No arguments needed. `BILLBOARD_URL` already defaults to the live deployment.
 
 Every display then hits a warm cache every time.
 
@@ -307,6 +309,9 @@ database and no dependencies to install.
 
 ### Deploy with the Plesk Git extension
 
+The live deployment is <https://billboard.engr.it/news-slides/>, served from
+`/var/www/vhosts/ece.ncsu.edu/billboard.engr.it/news-slides`.
+
 1. In Plesk, open the domain and choose **Git > Add Repository**.
 2. Choose **Remote Git hosting** and paste
    `https://github.com/charles-hall/engr-news-billboard.git`. If the repository is
@@ -320,7 +325,7 @@ database and no dependencies to install.
 Confirm the feed works before adding anything to the billboard:
 
 ```
-https://YOUR-SERVER/billboard/api/feed.php?site=csc&count=5
+https://billboard.engr.it/news-slides/api/feed.php?site=csc&count=5
 ```
 
 You should get JSON with five posts. If you get an error, see Troubleshooting.
@@ -443,7 +448,7 @@ featured image in its RSS. Add `&require_image=0` to confirm, and see the note o
 Open `tools/diagnose.php` in a browser:
 
 ```
-https://YOUR-SERVER/billboard/tools/diagnose.php
+https://billboard.engr.it/news-slides/tools/diagnose.php
 ```
 
 It tests every configured department from the server itself and reports PHP
@@ -478,7 +483,7 @@ a plugin required an `Authorization` header. The proxy falls back to RSS on its
 own and the slide keeps working. Check which path a department is on:
 
 ```bash
-curl -s "https://YOUR-SERVER/billboard/api/feed.php?site=ece" | grep -o '"source":"[a-z]*"'
+curl -s "https://billboard.engr.it/news-slides/api/feed.php?site=ece" | grep -o '"source":"[a-z]*"'
 ```
 
 Nothing needs to change on the department's site, and when someone later opens
