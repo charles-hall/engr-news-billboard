@@ -99,7 +99,39 @@ $cacheOnly = isset($_GET['cache']);
 <table>
   <tr><th>Check</th><th>Value</th></tr>
   <tr><td>PHP version</td><td><?= htmlspecialchars(PHP_VERSION) ?></td></tr>
-  <tr><td>cURL extension</td><td class="<?= function_exists('curl_init') ? 'ok' : 'bad' ?>"><?= function_exists('curl_init') ? 'present' : 'missing, using the stream wrapper' ?></td></tr>
+  <?php
+    /*
+     * Distinguish "extension not installed" from "function blocked by
+     * disable_functions". They look identical to function_exists() but need
+     * completely different fixes: one needs a server admin to install a
+     * package, the other is a per-domain PHP setting you can change yourself.
+     */
+    $curlLoaded   = extension_loaded('curl');
+    $curlCallable = function_exists('curl_init');
+    $disabled     = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+  ?>
+  <tr>
+    <td>cURL</td>
+    <td class="<?= $curlCallable ? 'ok' : 'bad' ?>">
+      <?php if ($curlCallable): ?>
+        present and callable
+      <?php elseif ($curlLoaded): ?>
+        BLOCKED, not missing<br>
+        <span class="ms">The extension is loaded but curl_init is listed in
+        disable_functions. Fix it yourself in Plesk under Websites &amp; Domains &gt;
+        PHP Settings, in the disable_functions field. No server admin needed.</span>
+      <?php else: ?>
+        extension not installed<br>
+        <span class="ms">Falling back to the stream wrapper, which works but cannot
+        bound total request time. Ask a server admin to enable it: Tools &amp; Settings
+        &gt; PHP Settings &gt; PHP <?= PHP_MAJOR_VERSION . '.' . PHP_MINOR_VERSION ?>, then
+        toggle curl on.</span>
+      <?php endif; ?>
+      <?php if (in_array('curl_init', $disabled, true)): ?>
+        <span class="ms">disable_functions contains: <?= htmlspecialchars(implode(', ', array_slice($disabled, 0, 12))) ?></span>
+      <?php endif; ?>
+    </td>
+  </tr>
   <tr>
     <td>zlib (gzdecode)</td>
     <td class="<?= function_exists('gzdecode') ? 'ok' : 'bad' ?>">
@@ -125,6 +157,39 @@ $cacheOnly = isset($_GET['cache']);
       <?= is_dir($cacheDir) ? (is_writable($cacheDir) ? 'writable' : 'NOT WRITABLE') : 'does not exist yet' ?>
     </td>
   </tr>
+</table>
+
+<h2>Scheduled warm-up</h2>
+<?php
+  /*
+   * warm.sh writes a report each run. Without it there is no way to tell a
+   * warm-up that was never scheduled from one that runs and fails: both leave
+   * stale caches and look identical from here.
+   */
+  $warmLog = rtrim($cacheDir, '/') . '/warm-last-run.txt';
+  $warmAge = is_readable($warmLog) ? time() - (int) filemtime($warmLog) : null;
+?>
+<table>
+<?php if ($warmAge === null): ?>
+  <tr>
+    <td class="bad">No warm-up has ever run on this server</td>
+    <td>
+      Either the scheduled task is not set up, or it is running an older
+      <code>warm.sh</code> that predates this report, or <code>BILLBOARD_URL</code>
+      inside it is wrong so every request fails before anything is written.
+      <span class="ms">Run it by hand once to check:
+      <code>sh tools/warm.sh</code></span>
+    </td>
+  </tr>
+<?php else: ?>
+  <tr>
+    <td class="<?= $warmAge < 1800 ? 'ok' : 'bad' ?>" style="white-space:nowrap">
+      Last run <?= number_format($warmAge) ?>s ago
+      <span class="ms"><?= $warmAge < 1800 ? 'on schedule' : 'overdue' ?></span>
+    </td>
+    <td><pre style="margin:0;font:13px/1.5 monospace"><?= htmlspecialchars((string) file_get_contents($warmLog)) ?></pre></td>
+  </tr>
+<?php endif; ?>
 </table>
 
 <h2>News feeds</h2>
@@ -164,9 +229,17 @@ $cacheOnly = isset($_GET['cache']);
     ?>
     <td class="<?= $klass ?>">
       <?= $cacheAge === null ? 'none yet' : number_format($cacheAge) . 's old' ?>
-      <span class="ms"><?= $cacheAge === null
-          ? 'never fetched'
-          : ($cacheAge < $ttl * 2 ? 'warm' : 'stale, warm-up may not be running') ?></span>
+      <span class="ms"><?php
+          if ($cacheAge === null) {
+              echo 'never fetched';
+          } elseif ($cacheAge < $ttl * 2) {
+              echo 'warm';
+          } elseif ($cacheAge < (int) $config['stale_ttl']) {
+              echo 'stale but still served; not in the warm-up list?';
+          } else {
+              echo 'past stale_ttl; next request will fetch live';
+          }
+      ?></span>
     </td>
   </tr>
 <?php endforeach; ?>

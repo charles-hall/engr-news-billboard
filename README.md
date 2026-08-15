@@ -144,6 +144,19 @@ would show broken images the moment a signature lapsed. Every image is copied
 into the cache directory instead and served through `api/image.php`, which only
 reads files already mirrored and never fetches anything itself.
 
+### Why the Instagram cache is not keyed on count
+
+One cache per source page serves every `count`. It used to be keyed on the
+count as well, which quietly meant the scheduled warm-up warmed one count and a
+slide asking for any other fell through to the slow path: half a megabyte of
+markup plus four Instagram images, fetched while a display waited. If that
+coincided with a slow origin, the display showed its error card.
+
+Image mirroring also happens after the response has been flushed, or during a
+`refresh=1` warm-up run where nothing is waiting. The first request after a
+cache expiry answers with Instagram CDN URLs, which work fine for hours, and
+picks up the mirrored copies on the next pass.
+
 ### Instagram URL parameters
 
 | Parameter | Default | Notes |
@@ -170,8 +183,12 @@ https://YOUR-SERVER/billboard/api/instagram.php?site=ece&debug=1
 Read it like this:
 
 - **`fetched_bytes` is 0, or the error says "Could not load"** - this server
-  cannot reach that page. Not a parsing problem. Check outbound access and
-  whether a WAF is treating the server differently from a browser.
+  could not reach that page in time. ece.ncsu.edu does this intermittently,
+  answering in under a second most of the time and timing out past fifteen
+  occasionally. Once any cache exists this is invisible, because a stale copy is
+  served instantly and the refresh happens behind it. If it happens on a first
+  ever request, run the warm-up and try again. Check outbound access and whether
+  a WAF is treating the server differently from a browser.
 - **Bytes came back but `sbi_item` is 0** - first compare `fetched_bytes`
   against the page's real size. If it is roughly a seventh of it, you are
   looking at a compressed body that was never decoded, and the marker count is
@@ -259,14 +276,24 @@ the cached copy instantly and refreshes after the display has been answered, so 
 billboard never waits. But the very first request after a deploy still pays full
 price, and stale-while-revalidate needs PHP-FPM, which Plesk uses by default.
 
-`tools/warm.sh` removes the question entirely. Edit `BILLBOARD_URL` at the top,
-then in Plesk go to **Websites & Domains > Scheduled Tasks > Add Task**:
+`tools/warm.sh` removes the question entirely. Edit `BILLBOARD_URL` at the top
+(and `SITES` / `IG_SITES` if you do not want all of them), then in Plesk go to
+**Websites & Domains > Scheduled Tasks > Add Task**:
 
 - Task type: **Run a command**
 - Command: `/bin/sh /var/www/vhosts/YOUR-DOMAIN/httpdocs/billboard/tools/warm.sh`
 - Run: every 10 minutes (`*/10 * * * *`)
 
 Every display then hits a warm cache every time.
+
+Each run writes a report to the cache directory, and `tools/diagnose.php` shows
+it at the top: when it last ran, how many feeds succeeded, and which failed.
+Without that, a warm-up that was never scheduled and one that runs and fails
+look identical from the outside, since both just leave stale caches.
+
+A stale cache is not automatically a broken warm-up, so read the two together.
+A department that is stale while others are warm is usually one that is simply
+not in the `SITES` list.
 
 ---
 

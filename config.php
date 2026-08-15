@@ -79,9 +79,11 @@ return [
     /**
      * Seconds to wait on the department site before giving up. Generous on
      * purpose: a cold CDN cache on a quiet department site can take six or
-     * seven seconds, and only one request per cache_ttl ever pays that cost.
+     * seven seconds, and ece.ncsu.edu intermittently takes past twelve to
+     * serve its own homepage. Only one request per cache_ttl pays this, and
+     * with stale-while-revalidate no display waits for it at all.
      */
-    'http_timeout' => 12,
+    'http_timeout' => 15,
 
     /**
      * Hard ceiling, in seconds, on time spent talking to department sites in a

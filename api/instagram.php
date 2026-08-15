@@ -79,22 +79,78 @@ if (!is_dir($cacheDir)) {
     @mkdir($cacheDir, 0775, true);
 }
 
-$cacheFile = rtrim($cacheDir, '/') . '/ig-' . $siteKey . '-' . sha1($path . '|' . $count) . '.json';
+/*
+ * Deliberately keyed on the source page alone, not on $count.
+ *
+ * Including the count gave every count value its own cache. The scheduled
+ * warm-up warms one of them, and a slide asking for any other count silently
+ * fell through to the slow path: fetching a half-megabyte page and four
+ * Instagram images while a display waited. The full set is cached once and
+ * sliced at serve time instead.
+ */
+$cacheFile = rtrim($cacheDir, '/') . '/ig-' . $siteKey . '-' . sha1($path) . '.json';
+
+// Always parse the full set so one cache serves every count.
+$fetchCount = 12;
 $cacheAge  = (is_readable($cacheFile) && filemtime($cacheFile) !== false)
     ? time() - (int) filemtime($cacheFile)
     : PHP_INT_MAX;
 
-if (!$refresh && $cacheAge < (int) $config['instagram_cache_ttl']) {
-    $cached = @file_get_contents($cacheFile);
-    if ($cached !== false && $cached !== '') {
-        echo $cached;
+/** Emit a cached payload cut down to the requested number of posts. */
+function serve_sliced(string $json, int $count): void
+{
+    $data = json_decode($json, true);
+    if (!is_array($data) || !isset($data['posts'])) {
+        echo $json; // unexpected shape; better to pass it through than to drop it
         exit;
+    }
+    $data['posts'] = array_slice($data['posts'], 0, $count);
+    echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+$cached    = is_readable($cacheFile) ? @file_get_contents($cacheFile) : false;
+$haveCache = ($cached !== false && $cached !== '');
+
+// Fresh enough.
+if (!$refresh && $haveCache && $cacheAge < (int) $config['instagram_cache_ttl']) {
+    serve_sliced($cached, $count);
+}
+
+/*
+ * Stale but usable: answer with it now, refresh afterwards.
+ *
+ * ece.ncsu.edu is intermittently slow to serve its homepage, taking twelve
+ * seconds and timing out where it usually takes one. Without this, whichever
+ * display happened to be first after a cache expiry would wear that wait and
+ * show its error card.
+ */
+$alreadySent = false;
+
+if (!$refresh && $haveCache && $cacheAge < (int) $config['stale_ttl']) {
+    $data = json_decode($cached, true);
+    if (is_array($data) && isset($data['posts'])) {
+        $data['stale']    = true;
+        $data['cacheAge'] = $cacheAge;
+        $out = $data;
+        $out['posts'] = array_slice($out['posts'], 0, $count);
+        echo json_encode($out, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if (finish_request_and_continue()) {
+            $alreadySent = true;
+        } else {
+            exit; // cannot detach; the scheduled warm-up will refresh it
+        }
     }
 }
 
 /* ------------------------------------------------------------------ fetch */
 
 $htmlDoc = http_get($base . $path, min((int) $config['http_timeout'], time_left($budget)), 'text/html');
+
+if ($htmlDoc === null && $alreadySent) {
+    exit; // the display already has real posts; nothing more to say
+}
 
 if ($htmlDoc === null && isset($_GET['debug'])) {
     // Same reasoning as below: answer 200 so the diagnosis is readable.
@@ -245,7 +301,7 @@ function post_from_block(string $block, bool $cleanCaptions, int $captionMax, bo
 
 $posts = parse_smashballoon(
     $htmlDoc,
-    $count,
+    $fetchCount,
     (bool) $config['clean_captions'],
     (int) $config['caption_max'],
     (bool) ($config['tighten_dashes'] ?? true)
@@ -288,6 +344,10 @@ if (isset($_GET['debug'])) {
  * markup came back and which Smash Balloon markers were in it. "No posts found"
  * on its own cannot distinguish a blocked fetch from a markup change.
  */
+if ($posts === [] && $alreadySent) {
+    exit;
+}
+
 if ($posts === []) {
     $diag = sprintf(
         'Fetched %s bytes from %s%s. Markers seen: sbi_item=%d, data-full-res=%d, instagram-feed plugin=%s.',
@@ -308,48 +368,6 @@ if ($posts === []) {
 }
 
 
-/* --------------------------------------------------------- mirror images */
-
-/*
- * Instagram CDN URLs are signed and expire. Copy each image onto this server
- * and hand the slide a stable local URL, so a lapsed signature can never put
- * broken images on a wall.
- */
-if ((bool) $config['instagram_mirror_images']) {
-    $imageDir = rtrim($cacheDir, '/') . '/ig-images';
-    if (!is_dir($imageDir)) {
-        @mkdir($imageDir, 0775, true);
-    }
-
-    foreach ($posts as &$post) {
-        $key  = sha1($post['id']);
-        $file = $imageDir . '/' . $key . '.jpg';
-        $age  = is_readable($file) ? time() - (int) filemtime($file) : PHP_INT_MAX;
-
-        if ($age > (int) $config['instagram_image_ttl']) {
-            // Stop mirroring rather than overrun the budget; anything not
-            // copied this pass keeps its previous local file or gets picked up
-            // on the next refresh.
-            $bytes = time_left($budget) > 2
-                ? http_get($post['image'], min((int) $config['http_timeout'], time_left($budget)), 'image/*')
-                : null;
-            // Sanity check the magic bytes before writing anything to disk.
-            if ($bytes !== null && strlen($bytes) > 1024 && str_starts_with($bytes, "\xFF\xD8\xFF")) {
-                $tmp = $file . '.' . getmypid() . '.tmp';
-                if (@file_put_contents($tmp, $bytes) !== false) {
-                    @rename($tmp, $file);
-                }
-            }
-        }
-
-        if (is_readable($file)) {
-            // Relative to the slide page at the web root, not to this script.
-            $post['image'] = 'api/image.php?id=' . rawurlencode($post['id']);
-        }
-    }
-    unset($post);
-}
-
 /* ---------------------------------------------------------------- respond */
 
 $payload = [
@@ -366,13 +384,89 @@ $payload = [
     'posts'     => $posts,
 ];
 
-$json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-if (is_dir($cacheDir) && is_writable($cacheDir)) {
-    $tmp = $cacheFile . '.' . getmypid() . '.tmp';
-    if (@file_put_contents($tmp, $json) !== false) {
-        @rename($tmp, $cacheFile);
+/** Write the payload to the cache, atomically. */
+function write_cache(string $cacheFile, array $payload): string
+{
+    $json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $dir  = dirname($cacheFile);
+    if (is_dir($dir) && is_writable($dir)) {
+        $tmp = $cacheFile . '.' . getmypid() . '.tmp';
+        if (@file_put_contents($tmp, $json) !== false) {
+            @rename($tmp, $cacheFile);
+        }
     }
+
+    return $json;
 }
 
-echo $json;
+$json = write_cache($cacheFile, $payload);
+
+if (!$alreadySent) {
+    $sliced = $payload;
+    $sliced['posts'] = array_slice($sliced['posts'], 0, $count);
+    echo json_encode($sliced, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+
+/* --------------------------------------------------------- mirror images */
+
+/*
+ * Everything below runs after the response has gone out.
+ *
+ * Instagram CDN URLs are signed and expire, so images are copied onto this
+ * server and served through api/image.php. But four images can be several
+ * megabytes, and making a display wait for that download before it sees
+ * anything is how a slide ends up timing out. The first request after a cache
+ * expiry therefore answers with CDN URLs, which work fine for hours, and the
+ * mirrored copies are picked up from the rewritten cache on the next request.
+ */
+if (!(bool) $config['instagram_mirror_images']) {
+    exit;
+}
+
+/*
+ * Mirroring must not block a display. Two ways that is guaranteed:
+ * the response has already been flushed and the client released, or this is
+ * the scheduled warm-up calling with refresh=1, where nothing is waiting.
+ *
+ * The second case matters on hosts without fastcgi_finish_request, where
+ * detaching is impossible. Without it, those hosts would never mirror at all
+ * and would be left pointing at Instagram CDN URLs that expire.
+ */
+if (!$alreadySent && !$refresh && !finish_request_and_continue()) {
+    exit;
+}
+
+$imageDir = rtrim($cacheDir, '/') . '/ig-images';
+if (!is_dir($imageDir)) {
+    @mkdir($imageDir, 0775, true);
+}
+
+$mirrored = false;
+
+foreach ($payload['posts'] as &$post) {
+    $file = $imageDir . '/' . sha1($post['id']) . '.jpg';
+    $age  = is_readable($file) ? time() - (int) filemtime($file) : PHP_INT_MAX;
+
+    if ($age > (int) $config['instagram_image_ttl']) {
+        $bytes = http_get($post['image'], (int) $config['http_timeout'], 'image/*');
+        // Check the magic bytes before writing anything to disk.
+        if ($bytes !== null && strlen($bytes) > 1024 && strncmp($bytes, "\xFF\xD8\xFF", 3) === 0) {
+            $tmp = $file . '.' . getmypid() . '.tmp';
+            if (@file_put_contents($tmp, $bytes) !== false) {
+                @rename($tmp, $file);
+            }
+        }
+    }
+
+    if (is_readable($file)) {
+        // Relative to the slide page at the web root, not to this script.
+        $post['image'] = 'api/image.php?id=' . rawurlencode($post['id']);
+        $mirrored = true;
+    }
+}
+unset($post);
+
+// Rewrite the cache so the next request serves local images.
+if ($mirrored) {
+    write_cache($cacheFile, $payload);
+}
