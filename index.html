@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NC State News Slide</title>
+<meta name="viewport" content="width=1920, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Digital signage slide showing the latest news from an NC State University department website.">
+
+<!-- Brand faces are self-hosted. A billboard player that boots before the
+     network settles must never fall back to a system font mid-rotation. -->
+<link rel="preload" href="assets/fonts/roboto-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/roboto-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/slide.css">
+</head>
+<body>
+
+<!--
+  The stage is always 1920x1080. slide.js scales it to whatever the player's
+  viewport happens to be, so the same URL is safe on a 4K panel or a preview
+  window without any layout reflow.
+-->
+<div id="stage" class="stage" aria-live="polite">
+
+  <div class="rule-top" aria-hidden="true"></div>
+
+  <div id="deck" class="deck"><!-- slides injected here --></div>
+
+  <footer class="footer">
+    <div id="progress" class="progress" aria-hidden="true"></div>
+    <div class="footer-inner">
+      <span id="footerSource" class="footer-source">NC State University</span>
+      <nav id="dots" class="dots" aria-label="Story position"></nav>
+    </div>
+  </footer>
+
+</div>
+
+<template id="slideTemplate">
+  <article class="slide">
+    <div class="media">
+      <img class="media-img" alt="" decoding="async">
+      <div class="media-fallback" aria-hidden="true"><span>Think and Do</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-inner">
+        <span class="accent" aria-hidden="true"></span>
+        <p class="eyebrow"></p>
+        <h1 class="headline"></h1>
+        <p class="date"></p>
+        <p class="abstract"></p>
+      </div>
+    </div>
+  </article>
+</template>
+
+<script src="assets/slide.js"></script>
+</body>
+</html>

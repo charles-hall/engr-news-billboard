@@ -1,0 +1,328 @@
+/* ==========================================================================
+   NC State Billboard News Slides
+   Canvas: 1920 x 1080. All measurements below are in stage pixels; slide.js
+   scales the whole stage to fit the player.
+
+   Palette and type per brand.ncsu.edu:
+     Wolfpack Red   #CC0000     Reynolds Red   #990000
+     Wolfpack Black #000000     Grays          #333333 #4D4D4D #CCCCCC #F2F2F2
+     Type: Roboto Condensed (headlines), Roboto (body), Roboto Slab (captions)
+   ========================================================================== */
+
+:root {
+  --wolfpack-red: #CC0000;
+  --reynolds-red: #990000;
+  --black: #000000;
+  --white: #FFFFFF;
+  --gray-90: #333333;
+  --gray-70: #4D4D4D;
+  --gray-20: #CCCCCC;
+  --gray-05: #F2F2F2;
+
+  --media-width: 1000px;
+  --rule-top: 14px;
+  --footer-height: 86px;
+
+  --bg: var(--white);
+  --headline-color: var(--black);
+  --body-color: var(--gray-90);
+  --meta-color: var(--gray-70);
+  --eyebrow-color: var(--wolfpack-red);
+  --panel-bg: var(--white);
+}
+
+/* Dark variant: ?theme=dark. Eyebrow goes white because Wolfpack Red on black
+   does not clear WCAG AA for text at this size. */
+.stage.theme-dark {
+  --bg: var(--black);
+  --panel-bg: var(--black);
+  --headline-color: var(--white);
+  --body-color: var(--gray-20);
+  --meta-color: var(--gray-20);
+  --eyebrow-color: var(--white);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  cursor: none;
+}
+
+.stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg);
+  font-family: "Roboto", Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Start with red. */
+.rule-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: var(--rule-top);
+  background: var(--wolfpack-red);
+  z-index: 3;
+}
+
+.deck {
+  position: absolute;
+  top: var(--rule-top);
+  left: 0;
+  right: 0;
+  bottom: var(--footer-height);
+}
+
+/* ------------------------------------------------------------------ slide */
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--media-width) 1fr;
+  opacity: 0;
+  transition: opacity 700ms ease-in-out;
+  will-change: opacity;
+}
+
+.slide.is-active { opacity: 1; }
+
+/* -------------------------------------------------------------- the photo */
+
+.media {
+  position: relative;
+  overflow: hidden;
+  background: var(--black);
+}
+
+.media-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 40%; /* favors faces in portrait-style news photos */
+  transform: scale(1.0);
+}
+
+/* Slow push, on by default, disable with ?kenburns=0 */
+.slide.is-active .media-img.kenburns {
+  animation: kenburns var(--dwell, 12s) linear forwards;
+}
+
+@keyframes kenburns {
+  from { transform: scale(1.0); }
+  to   { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.is-active .media-img.kenburns { animation: none; }
+  .slide { transition: none; }
+}
+
+/* Shown only when a post has no featured image. */
+.media-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--wolfpack-red);
+}
+
+.media-fallback span {
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 92px;
+  color: var(--white);
+  letter-spacing: 0.01em;
+}
+
+.slide.no-image .media-img { display: none; }
+.slide.no-image .media-fallback { display: flex; }
+
+/* --------------------------------------------------------------- the text */
+
+.panel {
+  position: relative;
+  background: var(--panel-bg);
+  display: flex;
+  align-items: center;
+  padding: 64px 80px;
+  min-width: 0;
+}
+
+/* The two panels are the same opaque color, so a plain cross-dissolve would
+   show both headlines stacked on top of each other for most of a second.
+   Instead the text fades out, the photos dissolve, then the new text fades in. */
+.panel-inner {
+  width: 100%;
+  min-width: 0;
+  opacity: 0;
+  transition: opacity 320ms ease-in;
+}
+
+.slide.is-active .panel-inner {
+  opacity: 1;
+  transition: opacity 380ms ease-out 380ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-inner,
+  .slide.is-active .panel-inner { transition: none; }
+}
+
+.accent {
+  display: block;
+  width: 132px;
+  height: 10px;
+  background: var(--wolfpack-red);
+  margin-bottom: 26px;
+}
+
+.eyebrow {
+  margin: 0 0 20px;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  color: var(--eyebrow-color);
+}
+
+.headline {
+  margin: 0 0 24px;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 78px;      /* slide.js shrinks this to fit */
+  line-height: 1.06;
+  letter-spacing: -0.005em;
+  color: var(--headline-color);
+  overflow: hidden;
+  overflow-wrap: break-word;
+  text-wrap: balance;
+}
+
+/* Roboto Slab is the brand's secondary face for captions and standalone
+   facts, which is exactly what a dateline is. */
+.date {
+  margin: 0 0 28px;
+  font-family: "Roboto Slab", Georgia, serif;
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.3;
+  color: var(--meta-color);
+}
+
+.abstract {
+  margin: 0;
+  font-family: "Roboto", Arial, sans-serif;
+  font-weight: 400;
+  font-size: 33px;
+  line-height: 1.45;
+  color: var(--body-color);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden;
+}
+
+/* ----------------------------------------------------------- footer / end */
+
+/* End with red. */
+.footer {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--footer-height);
+  background: var(--wolfpack-red);
+  z-index: 3;
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 7px;
+  width: 0;
+  background: var(--white);
+}
+
+.progress.run { animation: fill var(--dwell, 12s) linear forwards; }
+
+@keyframes fill { from { width: 0; } to { width: 100%; } }
+
+.footer-inner {
+  height: 100%;
+  padding: 0 80px 0 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-source {
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--white);
+  letter-spacing: 0.01em;
+}
+
+.dots {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.dot.is-active { background: var(--white); }
+
+/* ---------------------------------------------------------- status screen */
+
+.status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0 140px;
+  background: var(--wolfpack-red);
+  color: var(--white);
+  z-index: 4;
+}
+
+.status h2 {
+  margin: 0 0 20px;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 88px;
+  line-height: 1.05;
+}
+
+.status p {
+  margin: 0;
+  font-family: "Roboto", Arial, sans-serif;
+  font-size: 34px;
+  line-height: 1.4;
+  max-width: 1200px;
+}
+
+.status[hidden] { display: none; }
