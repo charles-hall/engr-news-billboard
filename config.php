@@ -133,16 +133,19 @@ return [
      * Meta credentials and refreshes its own token, so nothing here needs a
      * Meta app, an access token, or App Review.
      *
-     * handle = shown on the slide, without the @
+     * handle = shown on the slide, without the @. Capitalise it the way the
+     *          department styles the account (@NCStateECE, not @ncstateece).
+     *          Instagram usernames are case-insensitive in URLs, so the cased
+     *          form is safe to use for the profile link as well.
      * path   = page on the department site that renders the feed. The
      *          homepage works, but a dedicated page carrying only the
      *          [instagram-feed] shortcode survives homepage redesigns and can
      *          be set to show more posts.
      */
     'instagram' => [
-        'csc'  => ['handle' => 'ncstatecs',   'path' => '/'],
-        'ece'  => ['handle' => 'ncstateece',  'path' => '/'],
-        'ccee' => ['handle' => 'ncstateccee', 'path' => '/'],
+        'csc'  => ['handle' => 'NCStateCS',   'path' => '/'],
+        'ece'  => ['handle' => 'NCStateECE',  'path' => '/'],
+        'ccee' => ['handle' => 'NCStateCCEE', 'path' => '/'],
 
         /*
          * The rest are not enabled because their sites do not publish a feed
@@ -152,15 +155,15 @@ return [
          * homepage. Add a page carrying only [instagram-feed num=8], set it to
          * noindex, then uncomment this and point path at it:
          *
-         *   'engr' => ['handle' => 'ncstateengr', 'path' => '/instagram-feed/'],
+         *   'engr' => ['handle' => 'NCStateEngr', 'path' => '/instagram-feed/'],
          *
          * mae, ne, bme, cbe, mse and ise do not have the plugin installed at
          * all. Each links to an Instagram account from the footer, so the
          * accounts exist:
          *
-         *   mae  -> ncstatemae        ne  -> ncstatenuclear
-         *   bme  -> (no link found)   cbe -> ncstatecbe
-         *   mse  -> ncstatemse        ise -> ncstateise
+         *   mae  -> NCStateMAE        ne  -> NCStateNuclear
+         *   bme  -> (no link found)   cbe -> NCStateCBE
+         *   mse  -> NCStateMSE        ise -> NCStateISE
          *
          * Installing and authenticating Smash Balloon on those sites is the
          * only prerequisite; nothing in this repository needs to change.

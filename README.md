@@ -197,15 +197,15 @@ The slide can only read a feed the department's own site actually publishes.
 
 | Key | Handle | Status |
 | --- | --- | --- |
-| `csc` | @ncstatecs | Working, four posts from the homepage |
-| `ece` | @ncstateece | Working, four posts from the homepage |
-| `ccee` | @ncstateccee | Working, three posts from the homepage |
-| `engr` | @ncstateengr | Plugin active but no feed rendered. Needs a shortcode page |
-| `mae` | @ncstatemae | Smash Balloon not installed |
-| `ne` | @ncstatenuclear | Smash Balloon not installed |
-| `cbe` | @ncstatecbe | Smash Balloon not installed |
-| `mse` | @ncstatemse | Smash Balloon not installed |
-| `ise` | @ncstateise | Smash Balloon not installed |
+| `csc` | @NCStateCS | Working, four posts from the homepage |
+| `ece` | @NCStateECE | Working, four posts from the homepage |
+| `ccee` | @NCStateCCEE | Working, three posts from the homepage |
+| `engr` | @NCStateEngr | Plugin active but no feed rendered. Needs a shortcode page |
+| `mae` | @NCStateMAE | Smash Balloon not installed |
+| `ne` | @NCStateNuclear | Smash Balloon not installed |
+| `cbe` | @NCStateCBE | Smash Balloon not installed |
+| `mse` | @NCStateMSE | Smash Balloon not installed |
+| `ise` | @NCStateISE | Smash Balloon not installed |
 | `bme` | none found | No Instagram link on the site |
 
 engr.ncsu.edu is the quick win: the plugin is already active and authenticated,
@@ -227,8 +227,13 @@ which would make each photo taller and squeeze the captions.
 Add an entry to the `instagram` array in `config.php`:
 
 ```php
-'mae' => ['handle' => 'ncstatemae', 'path' => '/'],
+'mae' => ['handle' => 'NCStateMAE', 'path' => '/'],
 ```
+
+Capitalise the handle the way the department styles the account
+(`NCStateMAE`, not `ncstatemae`). Instagram usernames are case-insensitive in
+URLs, so the cased form is used for the on-screen handle, the follow line and
+the profile link alike.
 
 `path` is the page on that department's site that renders the feed. The homepage
 works and needs nothing created. A dedicated page carrying only the
