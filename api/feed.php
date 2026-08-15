@@ -97,7 +97,7 @@ if (!$refresh && $cacheAge < (int) $config['cache_ttl']) {
  * Fetch a URL. Uses cURL when present, falls back to the stream wrapper.
  * Returns the body string, or null on any failure.
  */
-function http_get(string $url, int $timeout): ?string
+function http_get(string $url, int $timeout, string $accept = 'application/json'): ?string
 {
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
@@ -109,8 +109,9 @@ function http_get(string $url, int $timeout): ?string
             CURLOPT_CONNECTTIMEOUT => min(5, $timeout),
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_ENCODING       => '', // accept gzip; RSS feeds run to several MB
             CURLOPT_USERAGENT      => 'NCState-Billboard-News/1.0 (+https://brand.ncsu.edu)',
-            CURLOPT_HTTPHEADER     => ['Accept: application/json'],
+            CURLOPT_HTTPHEADER     => ['Accept: ' . $accept],
         ]);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
@@ -122,7 +123,7 @@ function http_get(string $url, int $timeout): ?string
     $ctx = stream_context_create([
         'http' => [
             'timeout' => $timeout,
-            'header'  => "Accept: application/json\r\nUser-Agent: NCState-Billboard-News/1.0\r\n",
+            'header'  => "Accept: " . $accept . "\r\nUser-Agent: NCState-Billboard-News/1.0\r\n",
         ],
     ]);
     $body = @file_get_contents($url, false, $ctx);
@@ -165,6 +166,122 @@ function trim_words(string $text, int $max): string
     return rtrim($cut, " ,;:.") . '...';
 }
 
+/**
+ * Parse a WordPress RSS feed into the same post shape the REST path produces.
+ *
+ * Some department sites put the REST API behind an authentication plugin or a
+ * WAF rule, which answers every request with 401 or 403. Their RSS feed is
+ * still public and the NC State theme puts the featured image, its alt text
+ * and the excerpt right in <description>, so nothing is lost by reading it.
+ *
+ * Parsed with regex rather than SimpleXML: the structure is narrow and
+ * predictable, the extension is not guaranteed on every Plesk PHP handler, and
+ * it sidesteps XML entity expansion on a third-party document.
+ */
+function parse_rss(
+    string $xml,
+    int $count,
+    bool $requireImage,
+    string $timezone,
+    bool $tightenDashes,
+    int $excerptMax
+): array {
+    // These feeds carry every post the site has ever published, often several
+    // megabytes. Only the leading items matter, so cut the string first.
+    $chunks = explode('<item>', $xml, ($count * 4) + 2);
+    array_shift($chunks); // channel header
+
+    $out = [];
+    foreach ($chunks as $chunk) {
+        $item = explode('</item>', $chunk, 2)[0];
+
+        $title = tag_text($item, 'title');
+        $link  = tag_text($item, 'link');
+        if ($title === '' || $link === '') {
+            continue;
+        }
+
+        // The theme wraps the featured image in <div class="featured-img">.
+        // Take the src attribute specifically, not the first srcset candidate,
+        // which would hand back a downscaled copy.
+        $image = null;
+        $alt   = '';
+        if (preg_match('/<img\b[^>]*>/i', $item, $imgTag)) {
+            if (preg_match('/\ssrc="([^"]+)"/i', $imgTag[0], $m)) {
+                $image = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+            if (preg_match('/\salt="([^"]*)"/i', $imgTag[0], $m)) {
+                $alt = plain_text($m[1], $tightenDashes);
+            }
+        }
+
+        if ($requireImage && $image === null) {
+            continue;
+        }
+
+        // Drop the image wrapper before reading the excerpt, or the alt text
+        // would end up in the abstract.
+        $body = preg_replace('/<div class="featured-img">.*?<\/div>/is', '', tag_raw($item, 'description') ?? '') ?? '';
+
+        $out[] = [
+            'id'      => 0,
+            'title'   => plain_text($title, $tightenDashes),
+            'url'     => $link,
+            'dateISO' => rss_date_to_local(tag_text($item, 'pubDate'), $timezone),
+            'excerpt' => trim_words(plain_text($body, $tightenDashes), $excerptMax),
+            'image'   => $image,
+            'alt'     => $alt,
+        ];
+
+        if (count($out) >= $count) {
+            break;
+        }
+    }
+
+    return $out;
+}
+
+/** Raw inner content of the first matching tag, CDATA unwrapped. */
+function tag_raw(string $xml, string $tag): ?string
+{
+    if (!preg_match('/<' . $tag . '\b[^>]*>(.*?)<\/' . $tag . '>/is', $xml, $m)) {
+        return null;
+    }
+    $inner = $m[1];
+    if (preg_match('/<!\[CDATA\[(.*?)\]\]>/s', $inner, $c)) {
+        return $c[1];
+    }
+
+    return $inner;
+}
+
+/** Decoded plain text of the first matching tag. */
+function tag_text(string $xml, string $tag): string
+{
+    $raw = tag_raw($xml, $tag);
+
+    return $raw === null ? '' : trim(html_entity_decode(strip_tags($raw), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+}
+
+/**
+ * WordPress always stamps RSS pubDate in GMT, while the REST API reports site
+ * local time. Convert so both paths produce the same date for the same post.
+ */
+function rss_date_to_local(string $pubDate, string $timezone): string
+{
+    if ($pubDate === '') {
+        return '';
+    }
+    try {
+        $dt = new DateTimeImmutable($pubDate);
+        $dt = $dt->setTimezone(new DateTimeZone($timezone));
+    } catch (Exception $e) {
+        return '';
+    }
+
+    return $dt->format('Y-m-d\TH:i:s');
+}
+
 $base  = 'https://' . $host;
 $query = [
     'per_page' => $requireImage ? min(20, $count * 3) : $count, // overfetch, then filter
@@ -185,33 +302,12 @@ if ($tag !== '') {
 $postsRaw = http_get($base . '/wp-json/wp/v2/posts?' . http_build_query($query), (int) $config['http_timeout']);
 $posts    = $postsRaw !== null ? json_decode($postsRaw, true) : null;
 
-if (!is_array($posts)) {
-    // Upstream failed. Serve stale cache rather than an empty billboard.
-    if (is_readable($cacheFile) && $cacheAge < (int) $config['stale_ttl']) {
-        $stale = json_decode((string) file_get_contents($cacheFile), true);
-        if (is_array($stale)) {
-            $stale['stale']     = true;
-            $stale['cacheAge']  = $cacheAge;
-            echo json_encode($stale, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            exit;
-        }
-    }
-    fail(502, 'Could not reach ' . $host . ' and no usable cache is available.');
-}
-
-/* -------------------------------------------------------------- site name */
-
-$siteName = $site['label'] ?? null;
-if ($siteName === null || $siteName === '') {
-    $rootRaw  = http_get($base . '/wp-json', (int) $config['http_timeout']);
-    $root     = $rootRaw !== null ? json_decode($rootRaw, true) : null;
-    $siteName = is_array($root) && !empty($root['name']) ? (string) $root['name'] : $host;
-}
-
 /* -------------------------------------------------------------- normalize */
 
-$out = [];
-foreach ($posts as $post) {
+$source = 'rest';
+$out    = [];
+
+foreach (is_array($posts) ? $posts : [] as $post) {
     if (!is_array($post)) {
         continue;
     }
@@ -259,12 +355,57 @@ foreach ($posts as $post) {
     }
 }
 
+/* ----------------------------------------------------------- RSS fallback */
+
+$rssXml = null;
+
 if ($out === []) {
-    if (is_readable($cacheFile) && $cacheAge < (int) $config['stale_ttl']) {
-        readfile($cacheFile);
-        exit;
+    $rssXml = http_get($base . '/feed/', (int) $config['http_timeout'], 'application/rss+xml, application/xml');
+
+    if ($rssXml !== null) {
+        $out = parse_rss(
+            $rssXml,
+            $count,
+            $requireImage,
+            (string) ($config['timezone'] ?? 'America/New_York'),
+            $tightenDashes,
+            (int) $config['excerpt_max']
+        );
+        if ($out !== []) {
+            $source = 'rss';
+        }
     }
-    fail(404, 'No usable posts found on ' . $host . '.');
+}
+
+if ($out === []) {
+    // Both paths failed. Stale content beats an error card on a wall.
+    if (is_readable($cacheFile) && $cacheAge < (int) $config['stale_ttl']) {
+        $stale = json_decode((string) file_get_contents($cacheFile), true);
+        if (is_array($stale)) {
+            $stale['stale']    = true;
+            $stale['cacheAge'] = $cacheAge;
+            echo json_encode($stale, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    }
+    fail(502, 'Could not read posts from ' . $host . ' over REST or RSS, and no usable cache is available.');
+}
+
+/* -------------------------------------------------------------- site name */
+
+$siteName = $site['label'] ?? null;
+
+if ($siteName === null || $siteName === '') {
+    if ($source === 'rest') {
+        $rootRaw  = http_get($base . '/wp-json', (int) $config['http_timeout']);
+        $root     = $rootRaw !== null ? json_decode($rootRaw, true) : null;
+        $siteName = is_array($root) && !empty($root['name']) ? (string) $root['name'] : $host;
+    } else {
+        // The channel title sits before the first <item>, so this is cheap.
+        $channel  = explode('<item>', (string) $rssXml, 2)[0];
+        $chanName = tag_text($channel, 'title');
+        $siteName = $chanName !== '' ? $chanName : $host;
+    }
 }
 
 $payload = [
@@ -275,6 +416,7 @@ $payload = [
         'url'  => $base,
     ],
     'generated' => date('c'),
+    'source'    => $source,
     'cached'    => false,
     'stale'     => false,
     'posts'     => $out,

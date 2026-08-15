@@ -151,9 +151,17 @@ happy path.
   department site, not thousands.
 - **Stale content beats no content.** If a department site is down or slow, the
   proxy serves the last good feed for up to twelve hours rather than an error card.
+- **RSS fallback.** Not every department exposes the REST API. `ece.ncsu.edu` sits
+  behind Sucuri and answers every REST route with `401 MISSING_AUTHORIZATION_HEADER`,
+  the signature of a plugin requiring an `Authorization` header. When REST returns
+  nothing, `feed.php` reads `/feed/` instead. The NC State theme puts the featured
+  image, its alt text and the excerpt directly in the RSS `<description>`, so no
+  content is lost. The `source` field in the JSON says which path was used.
 - **Fallback fetch.** If the PHP proxy itself is unreachable, the page queries the
   WordPress REST API straight from the browser. WordPress sends permissive CORS
   headers on REST reads, so this works today and is there for the day PHP is not.
+  Note this browser-side path has no RSS fallback, so a REST-locked department
+  depends on the proxy being up.
 - **Retries.** A page that fails every path shows a branded card and retries every
   minute, on its own, without anyone visiting the display.
 - **Missing photos.** Posts without a featured image are skipped by default. If one
@@ -188,10 +196,36 @@ happy path.
 **`api/feed.php` returns "Unknown site key"**
 The `site` parameter is not in the `sites` array in `config.php`. Check spelling.
 
-**"Could not reach *.ncsu.edu"**
-The server cannot make outbound HTTPS requests, or the department site is blocking
-it. Test from the server: `curl -I https://csc.ncsu.edu/wp-json/wp/v2/posts`.
-Some department sites sit behind basic auth while in development and return 401.
+**"Could not read posts over REST or RSS"**
+Both paths failed. The server may not be able to make outbound HTTPS requests, or
+the department site may be down. Test from the server:
+
+```bash
+curl -sI https://DEPT.ncsu.edu/wp-json/wp/v2/posts
+curl -sI https://DEPT.ncsu.edu/feed/
+```
+
+If the feed responds but `feed.php` still fails, the site probably does not put a
+featured image in its RSS. Add `&require_image=0` to confirm, and see the note on
+`require_image` below.
+
+**A department returns 401 on REST**
+Expected for some sites, and handled. `ece.ncsu.edu` returns
+`401 MISSING_AUTHORIZATION_HEADER` on every REST route because a plugin or WAF rule
+requires an `Authorization` header. The proxy falls back to RSS on its own and the
+slide works normally. Check which path a department is on:
+
+```bash
+curl -s "https://YOUR-SERVER/billboard/api/feed.php?site=ece" | grep -o '"source":"[a-z]*"'
+```
+
+Nothing needs to change on the department's site. If someone later opens up REST
+there, the proxy will start preferring it again with no edit here.
+
+**Slow first load on a quiet department site**
+A cold CDN cache can take six or seven seconds to answer the first REST request.
+`http_timeout` is set to 12 seconds for that reason, and only one request per
+`cache_ttl` ever waits.
 
 **The slide shows "News is unavailable"**
 Open `api/feed.php?site=csc` directly in a browser. If that returns JSON, the

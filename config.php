@@ -57,8 +57,21 @@ return [
      */
     'cache_dir' => sys_get_temp_dir() . '/ncstate-billboard-cache',
 
-    /** Seconds to wait on the department site before giving up. */
-    'http_timeout' => 8,
+    /**
+     * Seconds to wait on the department site before giving up. Generous on
+     * purpose: a cold CDN cache on a quiet department site can take six or
+     * seven seconds, and only one request per cache_ttl ever pays that cost.
+     */
+    'http_timeout' => 12,
+
+    /**
+     * Timezone used to convert RSS publication dates to local time.
+     *
+     * Only used on the RSS fallback path. WordPress always stamps RSS pubDate
+     * in GMT, unlike the REST API which reports site local time, so without
+     * this an evening post would show tomorrow's date on the wall.
+     */
+    'timezone' => 'America/New_York',
 
     /** Trim abstracts to this many characters, on a word boundary. */
     'excerpt_max' => 260,
