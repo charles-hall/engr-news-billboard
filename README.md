@@ -60,7 +60,7 @@ Ten department keys ship in `config.php`, all verified working:
 | Key | Site | Feed path |
 | --- | --- | --- |
 | `csc` | Computer Science | REST |
-| `ece` | Electrical and Computer Engineering | RSS |
+| `ece` | Electrical and Computer Engineering | REST |
 | `mae` | Mechanical and Aerospace Engineering | REST |
 | `ne` | Nuclear Engineering | REST |
 | `ccee` | Civil, Construction and Environmental Engineering | REST |
@@ -299,10 +299,10 @@ happy path.
   department site, not thousands.
 - **Stale content beats no content.** If a department site is down or slow, the
   proxy serves the last good feed for up to twelve hours rather than an error card.
-- **RSS fallback.** Not every department exposes the REST API. `ece.ncsu.edu` sits
-  behind Sucuri and answers every REST route with `401 MISSING_AUTHORIZATION_HEADER`,
-  the signature of a plugin requiring an `Authorization` header. When REST returns
-  nothing, `feed.php` reads `/feed/` instead. The NC State theme puts the featured
+- **RSS fallback.** Not every department exposes the REST API at all times.
+  `ece.ncsu.edu` spent a stretch behind a plugin that answered every REST route
+  with `401 MISSING_AUTHORIZATION_HEADER`. When REST returns nothing,
+  `feed.php` reads `/feed/` instead. The NC State theme puts the featured
   image, its alt text and the excerpt directly in the RSS `<description>`, so no
   content is lost. The `source` field in the JSON says which path was used.
 - **Fallback fetch.** If the PHP proxy itself is unreachable, the page queries the
@@ -357,18 +357,52 @@ If the feed responds but `feed.php` still fails, the site probably does not put 
 featured image in its RSS. Add `&require_image=0` to confirm, and see the note on
 `require_image` below.
 
+**Something is wrong and you want to see it from the server's point of view**
+
+Open `tools/diagnose.php` in a browser:
+
+```
+https://YOUR-SERVER/billboard/tools/diagnose.php
+```
+
+It tests every configured department from the server itself and reports PHP
+settings, cache writability, and per-department REST and RSS timings. Timings
+from your own server are the only ones that matter: a department site can answer
+a laptop in half a second and a data centre in thirty. Cells over eight seconds
+are shaded. The page reads only and changes nothing; delete it once the
+deployment has settled.
+
+**Pinning a department to one path**
+
+Add `source` to its entry in `config.php` when you know which path works:
+
+```php
+'ece' => ['host' => 'ece.ncsu.edu', 'label' => '...', 'source' => 'rss'],
+```
+
+`auto` (the default) tries REST then falls back to RSS. `rss` or `rest` skips
+the other entirely.
+
+ECE was pinned to `rss` for a while because its REST API returned 401 on every
+route, and on a cold cache those two doomed attempts were enough to push the
+request past the point where a display gives up waiting. That plugin has since
+been deactivated, so ECE is back on `auto` and takes REST at about 1.6 seconds
+cold. Pin a site only when you have confirmed one path genuinely does not work,
+and unpin it when that changes.
+
 **A department returns 401 on REST**
-Expected for some sites, and handled. `ece.ncsu.edu` returns
-`401 MISSING_AUTHORIZATION_HEADER` on every REST route because a plugin or WAF rule
-requires an `Authorization` header. The proxy falls back to RSS on its own and the
-slide works normally. Check which path a department is on:
+Handled, and worth understanding rather than panicking about. `ece.ncsu.edu` did
+this for a while: `401 MISSING_AUTHORIZATION_HEADER` on every REST route, because
+a plugin required an `Authorization` header. The proxy falls back to RSS on its
+own and the slide keeps working. Check which path a department is on:
 
 ```bash
 curl -s "https://YOUR-SERVER/billboard/api/feed.php?site=ece" | grep -o '"source":"[a-z]*"'
 ```
 
-Nothing needs to change on the department's site. If someone later opens up REST
-there, the proxy will start preferring it again with no edit here.
+Nothing needs to change on the department's site, and when someone later opens
+REST back up the proxy starts preferring it again with no edit here, which is
+exactly what happened on ECE.
 
 **Slow first load on a quiet department site**
 A cold CDN cache can take six or seven seconds to answer the first REST request.
@@ -410,6 +444,7 @@ api/instagram.php      Instagram proxy, reads Smash Balloon, mirrors images
 api/image.php          serves mirrored Instagram images
 config.php             department allowlist and defaults
 tools/warm.sh          scheduled cache warm-up, see above
+tools/diagnose.php     open in a browser to test every feed from the server
 tools/screenshot.js    development only, renders a slide headless for review
 ```
 

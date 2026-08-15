@@ -62,6 +62,21 @@ $tag      = isset($_GET['tag'])      ? preg_replace('/[^a-z0-9_-]/i', '', (strin
 $refresh = isset($_GET['refresh']) && filter_var($_GET['refresh'], FILTER_VALIDATE_BOOLEAN);
 
 $tightenDashes = (bool) ($config['tighten_dashes'] ?? true);
+$budget        = (int) ($config['time_budget'] ?? 20);
+$timeout       = (int) $config['http_timeout'];
+
+upstream_user_agent((string) ($config['user_agent'] ?? ''));
+
+/*
+ * 'auto' tries REST then RSS. A site pinned to 'rss' or 'rest' skips the other,
+ * which matters when one of them is known to fail: ECE answers every REST route
+ * with 401, and on a cold cache those doomed attempts alone were enough to push
+ * the request past the point where a display gives up waiting.
+ */
+$source_pref = strtolower((string) ($site['source'] ?? 'auto'));
+if (!in_array($source_pref, ['auto', 'rest', 'rss'], true)) {
+    $source_pref = 'auto';
+}
 
 /* ------------------------------------------------------------------ cache */
 
@@ -255,17 +270,22 @@ if ($tag !== '') {
     $query['tag'] = $tag;
 }
 
-$restUrl  = $base . '/wp-json/wp/v2/posts?' . http_build_query($query);
-$postsRaw = http_get($restUrl, (int) $config['http_timeout']);
+$posts = null;
 
-// A department site with a cold CDN cache can miss the first request and answer
-// the second one instantly. Both cbe.ncsu.edu and mae.ncsu.edu did exactly that
-// in testing. One retry is much cheaper than dropping to the RSS path.
-if ($postsRaw === null) {
-    $postsRaw = http_get($restUrl, (int) $config['http_timeout']);
+if ($source_pref !== 'rss') {
+    $restUrl  = $base . '/wp-json/wp/v2/posts?' . http_build_query($query);
+    $postsRaw = http_get($restUrl, min($timeout, time_left($budget)));
+
+    // A department site with a cold CDN cache can miss the first request and
+    // answer the second one instantly. Both cbe.ncsu.edu and mae.ncsu.edu did
+    // exactly that in testing, so one retry is worth it, but only while there
+    // is budget left to spend.
+    if ($postsRaw === null && time_left($budget) > 3) {
+        $postsRaw = http_get($restUrl, min($timeout, time_left($budget)));
+    }
+
+    $posts = $postsRaw !== null ? json_decode($postsRaw, true) : null;
 }
-
-$posts = $postsRaw !== null ? json_decode($postsRaw, true) : null;
 
 /* -------------------------------------------------------------- normalize */
 
@@ -324,8 +344,8 @@ foreach (is_array($posts) ? $posts : [] as $post) {
 
 $rssXml = null;
 
-if ($out === []) {
-    $rssXml = http_get($base . '/feed/', (int) $config['http_timeout'], 'application/rss+xml, application/xml');
+if ($out === [] && $source_pref !== 'rest') {
+    $rssXml = http_get($base . '/feed/', min($timeout, time_left($budget)), 'application/rss+xml, application/xml');
 
     if ($rssXml !== null) {
         $out = parse_rss(
@@ -363,7 +383,7 @@ $siteName = $site['label'] ?? null;
 
 if ($siteName === null || $siteName === '') {
     if ($source === 'rest') {
-        $rootRaw  = http_get($base . '/wp-json', (int) $config['http_timeout']);
+        $rootRaw  = http_get($base . '/wp-json', min(5, time_left($budget)));
         $root     = $rootRaw !== null ? json_decode($rootRaw, true) : null;
         $siteName = is_array($root) && !empty($root['name']) ? (string) $root['name'] : $host;
     } else {

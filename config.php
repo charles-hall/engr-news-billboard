@@ -22,6 +22,18 @@ return [
      */
     'sites' => [
         'csc'  => ['host' => 'csc.ncsu.edu',   'label' => 'Computer Science'],
+
+        /*
+         * source: 'auto' (the default) tries the REST API and falls back to RSS.
+         * 'rest' or 'rss' pins a site to one path, which is worth doing when the
+         * other is known to fail.
+         *
+         * ece.ncsu.edu was pinned to 'rss' for a while: every wp/v2 route
+         * answered 401 MISSING_AUTHORIZATION_HEADER behind Sucuri. That plugin
+         * has since been deactivated and REST now works there, so it is back on
+         * 'auto' and gets the better path, with RSS still underneath it if the
+         * lockdown ever returns.
+         */
         'ece'  => ['host' => 'ece.ncsu.edu',   'label' => 'Electrical and Computer Engineering'],
         'mae'  => ['host' => 'mae.ncsu.edu',   'label' => 'Mechanical and Aerospace Engineering'],
         'ne'   => ['host' => 'ne.ncsu.edu',    'label' => 'Nuclear Engineering'],
@@ -70,6 +82,27 @@ return [
      * seven seconds, and only one request per cache_ttl ever pays that cost.
      */
     'http_timeout' => 12,
+
+    /**
+     * Hard ceiling, in seconds, on time spent talking to department sites in a
+     * single request.
+     *
+     * Without this, a site that is merely slow rather than down could stack up
+     * several timeouts and run past PHP's max_execution_time, killing the script
+     * before it can write its cache or serve stale content. Keep this
+     * comfortably under max_execution_time, which is 30 on most Plesk handlers.
+     */
+    'time_budget' => 20,
+
+    /**
+     * User agent sent to department sites.
+     *
+     * Deliberately browser-like. Some of these sites sit behind a WAF that
+     * treats unfamiliar agents differently, and this proxy is only ever reading
+     * public pages from our own university's sites.
+     */
+    'user_agent' => 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
+        . 'Chrome/126.0 Safari/537.36 NCState-Billboard/1.0 (+https://brand.ncsu.edu)',
 
     /**
      * Timezone used to convert RSS publication dates to local time.

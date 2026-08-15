@@ -54,11 +54,42 @@ function finish_request_and_continue(): bool
 }
 
 /**
+ * Remaining seconds in this request's upstream time budget.
+ *
+ * Every call to a department site passes through here so that a run of slow or
+ * hanging hosts can never push the script past PHP's max_execution_time. Being
+ * killed mid-request is the one failure mode with no graceful degradation: no
+ * cache written, no stale content served, just a dead connection and an error
+ * card on the wall.
+ */
+function time_left(int $budget): int
+{
+    $spent = microtime(true) - (float) ($_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true));
+
+    return (int) max(0, $budget - (int) ceil($spent));
+}
+
+/** User agent for upstream requests, set from config by the entry points. */
+function upstream_user_agent(?string $set = null): string
+{
+    static $ua = 'NCState-Billboard-News/1.0 (+https://brand.ncsu.edu)';
+    if ($set !== null && $set !== '') {
+        $ua = $set;
+    }
+
+    return $ua;
+}
+
+/**
  * Fetch a URL. Uses cURL when present, falls back to the stream wrapper.
  * Returns the body string, or null on any failure.
  */
 function http_get(string $url, int $timeout, string $accept = 'application/json'): ?string
 {
+    if ($timeout < 1) {
+        return null; // budget spent
+    }
+
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -70,7 +101,7 @@ function http_get(string $url, int $timeout, string $accept = 'application/json'
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_ENCODING       => '', // accept gzip; RSS feeds run to several MB
-            CURLOPT_USERAGENT      => 'NCState-Billboard-News/1.0 (+https://brand.ncsu.edu)',
+            CURLOPT_USERAGENT      => upstream_user_agent(),
             CURLOPT_HTTPHEADER     => ['Accept: ' . $accept],
         ]);
         $body = curl_exec($ch);
@@ -83,7 +114,7 @@ function http_get(string $url, int $timeout, string $accept = 'application/json'
     $ctx = stream_context_create([
         'http' => [
             'timeout' => $timeout,
-            'header'  => "Accept: " . $accept . "\r\nUser-Agent: NCState-Billboard-News/1.0\r\n",
+            'header'  => "Accept: " . $accept . "\r\nUser-Agent: " . upstream_user_agent() . "\r\n",
         ],
     ]);
     $body = @file_get_contents($url, false, $ctx);

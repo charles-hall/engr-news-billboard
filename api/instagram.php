@@ -69,6 +69,9 @@ $refresh = isset($_GET['refresh']) && filter_var($_GET['refresh'], FILTER_VALIDA
 
 $base = 'https://' . $host;
 
+upstream_user_agent((string) ($config['user_agent'] ?? ''));
+$budget = (int) ($config['time_budget'] ?? 20);
+
 /* ------------------------------------------------------------------ cache */
 
 $cacheDir = (string) $config['cache_dir'];
@@ -91,7 +94,7 @@ if (!$refresh && $cacheAge < (int) $config['instagram_cache_ttl']) {
 
 /* ------------------------------------------------------------------ fetch */
 
-$htmlDoc = http_get($base . $path, (int) $config['http_timeout'], 'text/html');
+$htmlDoc = http_get($base . $path, min((int) $config['http_timeout'], time_left($budget)), 'text/html');
 
 if ($htmlDoc === null) {
     serve_stale_or_fail($cacheFile, $cacheAge, (int) $config['stale_ttl'], 'Could not load ' . $host . $path . '.');
@@ -208,7 +211,12 @@ if ((bool) $config['instagram_mirror_images']) {
         $age  = is_readable($file) ? time() - (int) filemtime($file) : PHP_INT_MAX;
 
         if ($age > (int) $config['instagram_image_ttl']) {
-            $bytes = http_get($post['image'], (int) $config['http_timeout'], 'image/*');
+            // Stop mirroring rather than overrun the budget; anything not
+            // copied this pass keeps its previous local file or gets picked up
+            // on the next refresh.
+            $bytes = time_left($budget) > 2
+                ? http_get($post['image'], min((int) $config['http_timeout'], time_left($budget)), 'image/*')
+                : null;
             // Sanity check the magic bytes before writing anything to disk.
             if ($bytes !== null && strlen($bytes) > 1024 && str_starts_with($bytes, "\xFF\xD8\xFF")) {
                 $tmp = $file . '.' . getmypid() . '.tmp';
