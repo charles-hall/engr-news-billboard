@@ -96,6 +96,21 @@ if (!$refresh && $cacheAge < (int) $config['instagram_cache_ttl']) {
 
 $htmlDoc = http_get($base . $path, min((int) $config['http_timeout'], time_left($budget)), 'text/html');
 
+if ($htmlDoc === null && isset($_GET['debug'])) {
+    // Same reasoning as below: answer 200 so the diagnosis is readable.
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'host'          => $host,
+        'path'          => $path,
+        'fetched_url'   => $base . $path,
+        'fetched_bytes' => 0,
+        'result'        => 'fetch failed: this server could not load that page',
+        'hint'          => 'Check outbound HTTPS from this server, and whether the site treats it '
+                         . 'differently from a browser. Compare with: curl -sI ' . $base . $path,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
 if ($htmlDoc === null) {
     serve_stale_or_fail(
         $cacheFile,
@@ -237,6 +252,37 @@ $posts = parse_smashballoon(
 );
 
 /*
+ * ?debug=1 reports what the parser saw, and reports it BEFORE the failure check
+ * so it still answers when the thing being debugged is the failure. It returns
+ * 200 deliberately: a 502 body is unreadable to most tooling, which is exactly
+ * the position this is meant to get you out of.
+ */
+if (isset($_GET['debug'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'host'           => $host,
+        'path'           => $path,
+        'fetched_url'    => $base . $path,
+        'fetched_bytes'  => strlen($htmlDoc),
+        'sbi_item'       => substr_count($htmlDoc, 'class="sbi_item'),
+        'data_full_res'  => substr_count($htmlDoc, 'data-full-res="'),
+        'plugin_present' => strpos($htmlDoc, 'plugins/instagram-feed') !== false,
+        'posts_parsed'   => count($posts),
+        'captions'       => array_map(static fn ($p) => mb_substr($p['caption'], 0, 60), $posts),
+        // The page's own <title> and opening text, so a WAF challenge or a
+        // redirect notice is visible rather than merely implied by a byte
+        // count. Scripts are stripped first or this is all inline jQuery.
+        'page_title'     => preg_match('/<title[^>]*>(.*?)<\/title>/is', $htmlDoc, $t)
+            ? trim(html_entity_decode(strip_tags($t[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'))
+            : '(none)',
+        'head'           => mb_substr(plain_text(
+            preg_replace('/<(script|style|noscript)\b[^>]*>.*?<\/\1>/is', ' ', mb_substr($htmlDoc, 0, 60000)) ?? ''
+        ), 0, 300),
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+/*
  * When this fails it fails on someone else's server, where none of the usual
  * tools are to hand, so the error carries what was actually seen: how much
  * markup came back and which Smash Balloon markers were in it. "No posts found"
@@ -261,21 +307,6 @@ if ($posts === []) {
     );
 }
 
-// ?debug=1 reports what the parser saw without changing what it does.
-if (isset($_GET['debug'])) {
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
-        'host'           => $host,
-        'path'           => $path,
-        'fetched_bytes'  => strlen($htmlDoc),
-        'sbi_item'       => substr_count($htmlDoc, 'class="sbi_item'),
-        'data_full_res'  => substr_count($htmlDoc, 'data-full-res="'),
-        'plugin_present' => strpos($htmlDoc, 'plugins/instagram-feed') !== false,
-        'posts_parsed'   => count($posts),
-        'titles'         => array_map(static fn ($p) => mb_substr($p['caption'], 0, 60), $posts),
-    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-    exit;
-}
 
 /* --------------------------------------------------------- mirror images */
 
