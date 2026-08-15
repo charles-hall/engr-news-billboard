@@ -53,6 +53,15 @@ function cell(array $r, string $extra = ''): string
 $timeout  = (int) $config['http_timeout'];
 $cacheDir = (string) $config['cache_dir'];
 
+/*
+ * ?cache=1 skips every network probe and reports only what is already on disk.
+ *
+ * The full page tests a dozen department sites one after another and can take a
+ * minute, which is too slow for the question you most often want answered:
+ * is the scheduled warm-up actually running? Cache ages answer that instantly.
+ */
+$cacheOnly = isset($_GET['cache']);
+
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,7 +86,14 @@ $cacheDir = (string) $config['cache_dir'];
 <body>
 
 <h1>Billboard slides diagnostic</h1>
-<p class="lede">Run from <?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'this server') ?> at <?= date('M j, Y g:i a') ?>.</p>
+<p class="lede">
+  Run from <?= htmlspecialchars($_SERVER['HTTP_HOST'] ?? 'this server') ?> at <?= date('M j, Y g:i a') ?>.
+  <?php if ($cacheOnly): ?>
+    Cache only: nothing was fetched. <a href="?">Run the full test</a>, which takes about a minute.
+  <?php else: ?>
+    <a href="?cache=1">Cache only</a> skips the network probes and loads instantly.
+  <?php endif; ?>
+</p>
 
 <h2>Environment</h2>
 <table>
@@ -121,12 +137,12 @@ $cacheDir = (string) $config['cache_dir'];
     $base = 'https://' . $host;
 
     $rest = ['ok' => false, 'ms' => 0, 'bytes' => 0, 'body' => null];
-    if ($pref !== 'rss') {
+    if (!$cacheOnly && $pref !== 'rss') {
         $rest = probe($base . '/wp-json/wp/v2/posts?per_page=1&_fields=id', $timeout);
     }
 
     $rss = ['ok' => false, 'ms' => 0, 'bytes' => 0, 'body' => null];
-    if ($pref !== 'rest') {
+    if (!$cacheOnly && $pref !== 'rest') {
         $rss = probe($base . '/feed/', $timeout, 'application/rss+xml, application/xml');
     }
 
@@ -137,9 +153,21 @@ $cacheDir = (string) $config['cache_dir'];
     <td><code><?= htmlspecialchars((string) $key) ?></code></td>
     <td><?= htmlspecialchars($host) ?></td>
     <td><?= htmlspecialchars($pref) ?></td>
-    <?php if ($pref === 'rss'): ?><td>skipped</td><?php else: echo cell($rest); endif; ?>
-    <?php if ($pref === 'rest'): ?><td>skipped</td><?php else: echo cell($rss, $rss['ok'] ? number_format($rss['bytes'] / 1024) . ' KB' : ''); endif; ?>
-    <td><?= $cacheAge === null ? 'none yet' : 'age ' . number_format($cacheAge) . 's' ?></td>
+    <?php if ($cacheOnly): ?><td>not tested</td><td>not tested</td>
+    <?php elseif ($pref === 'rss'): ?><td>skipped</td><?= cell($rss, $rss['ok'] ? number_format($rss['bytes'] / 1024) . ' KB' : '') ?>
+    <?php elseif ($pref === 'rest'): ?><?= cell($rest) ?><td>skipped</td>
+    <?php else: ?><?= cell($rest) ?><?= cell($rss, $rss['ok'] ? number_format($rss['bytes'] / 1024) . ' KB' : '') ?>
+    <?php endif; ?>
+    <?php
+      $ttl   = (int) $config['cache_ttl'];
+      $klass = $cacheAge === null ? 'bad' : ($cacheAge < $ttl * 2 ? 'ok' : 'bad');
+    ?>
+    <td class="<?= $klass ?>">
+      <?= $cacheAge === null ? 'none yet' : number_format($cacheAge) . 's old' ?>
+      <span class="ms"><?= $cacheAge === null
+          ? 'never fetched'
+          : ($cacheAge < $ttl * 2 ? 'warm' : 'stale, warm-up may not be running') ?></span>
+    </td>
   </tr>
 <?php endforeach; ?>
 </table>
@@ -151,14 +179,25 @@ $cacheDir = (string) $config['cache_dir'];
     if (!isset($config['sites'][$key])) { continue; }
     $host = $config['sites'][$key]['host'];
     $path = '/' . ltrim((string) ($ig['path'] ?? '/'), '/');
-    $page = probe('https://' . $host . $path, $timeout, 'text/html');
-    $found = $page['ok'] ? preg_match_all('/<div class="sbi_item/', (string) $page['body']) : 0;
+    $igGlob = glob(rtrim($cacheDir, '/') . '/ig-' . $key . '-*.json') ?: [];
+    $igAge  = $igGlob !== [] ? time() - (int) filemtime($igGlob[0]) : null;
+
+    if ($cacheOnly) {
+        $cached = $igGlob !== [] ? json_decode((string) file_get_contents($igGlob[0]), true) : null;
+        $page   = ['ok' => is_array($cached), 'ms' => 0, 'bytes' => 0, 'body' => null];
+        $found  = is_array($cached) ? count($cached['posts'] ?? []) : 0;
+    } else {
+        $page  = probe('https://' . $host . $path, $timeout, 'text/html');
+        $found = $page['ok'] ? substr_count((string) $page['body'], 'class="sbi_item') : 0;
+    }
 ?>
   <tr>
     <td><code><?= htmlspecialchars((string) $key) ?></code></td>
     <td>@<?= htmlspecialchars((string) $ig['handle']) ?></td>
     <td><?= htmlspecialchars($host . $path) ?></td>
-    <?= cell($page) ?>
+    <?php if ($cacheOnly): ?>
+      <td class="<?= $igAge === null ? 'bad' : 'ok' ?>"><?= $igAge === null ? 'no cache' : number_format($igAge) . 's old' ?></td>
+    <?php else: echo cell($page); endif; ?>
     <td class="<?= $found > 0 ? 'ok' : 'bad' ?>"><?= (int) $found ?></td>
   </tr>
 <?php endforeach; ?>
