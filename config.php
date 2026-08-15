@@ -26,6 +26,13 @@ return [
         'mae'  => ['host' => 'mae.ncsu.edu',   'label' => 'Mechanical and Aerospace Engineering'],
         'ne'   => ['host' => 'ne.ncsu.edu',    'label' => 'Nuclear Engineering'],
         'ccee' => ['host' => 'ccee.ncsu.edu',  'label' => 'Civil, Construction and Environmental Engineering'],
+        'bme'  => ['host' => 'bme.ncsu.edu',   'label' => 'Biomedical Engineering'],
+        'cbe'  => ['host' => 'cbe.ncsu.edu',   'label' => 'Chemical and Biomolecular Engineering'],
+        'mse'  => ['host' => 'mse.ncsu.edu',   'label' => 'Materials Science and Engineering'],
+        // Formally the Edward P. Fitts Department of Industrial and Systems
+        // Engineering. Shortened here because the eyebrow sits above the
+        // headline and the full name crowds it.
+        'ise'  => ['host' => 'ise.ncsu.edu',   'label' => 'Industrial and Systems Engineering'],
         'engr' => ['host' => 'engr.ncsu.edu',  'label' => 'College of Engineering'],
     ],
 
@@ -82,4 +89,50 @@ return [
      * excerpt is never changed. Set false to reproduce the site copy verbatim.
      */
     'tighten_dashes' => true,
+
+    /* ------------------------------------------------------ Instagram slide */
+
+    /**
+     * Per-department Instagram settings, used by api/instagram.php.
+     *
+     * These read the Instagram feed already rendered by the Smash Balloon
+     * plugin on the department's own WordPress site. That plugin holds the
+     * Meta credentials and refreshes its own token, so nothing here needs a
+     * Meta app, an access token, or App Review.
+     *
+     * handle = shown on the slide, without the @
+     * path   = page on the department site that renders the feed. The
+     *          homepage works, but a dedicated page carrying only the
+     *          [instagram-feed] shortcode survives homepage redesigns and can
+     *          be set to show more posts.
+     */
+    'instagram' => [
+        'csc' => ['handle' => 'ncstatecs',   'path' => '/'],
+        'ece' => ['handle' => 'ncstateece',  'path' => '/'],
+    ],
+
+    /** Seconds to keep the parsed Instagram feed before refetching. */
+    'instagram_cache_ttl' => 1800,
+
+    /**
+     * Mirror Instagram images onto this server.
+     *
+     * Instagram CDN URLs are signed and expire. A billboard that hotlinks them
+     * shows broken images the moment a signature lapses, so every image is
+     * copied locally and served through api/image.php instead.
+     */
+    'instagram_mirror_images' => true,
+
+    /** Seconds a mirrored image stays on disk before being refetched. */
+    'instagram_image_ttl' => 604800,
+
+    /** Trim Instagram captions to this many characters, on a word boundary. */
+    'caption_max' => 150,
+
+    /**
+     * Drop trailing hashtag blocks and "link in bio" tails from captions.
+     * Hashtags used mid-sentence are kept, since removing those breaks the
+     * sentence they are part of.
+     */
+    'clean_captions' => true,
 ];

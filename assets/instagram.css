@@ -1,0 +1,163 @@
+/* ==========================================================================
+   NC State Billboard Instagram Slide
+   Canvas: 1920 x 1080. Shares the stage scaling and font stack in slide.css.
+
+   Instagram posts are square, so the news slide's split layout does not apply.
+   Four white cards on a Wolfpack Red field reads as a social wall from across
+   a lobby and keeps the brand's core color dominant.
+   ========================================================================== */
+
+.ig-stage {
+  background: var(--wolfpack-red);
+  display: flex;
+  flex-direction: column;
+  padding: 56px 56px 44px;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.ig-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 24px;
+  border-bottom: 4px solid rgba(255, 255, 255, 0.35);
+  flex: 0 0 auto;
+}
+
+.ig-eyebrow {
+  margin: 0 0 6px;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.ig-handle {
+  margin: 0;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 76px;
+  line-height: 1;
+  letter-spacing: -0.005em;
+  color: var(--white);
+}
+
+.ig-kicker {
+  margin: 0;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--white);
+}
+
+/* ------------------------------------------------------------------ grid */
+
+.ig-grid {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 26px;
+  padding: 30px 0;
+  min-height: 0;
+}
+
+.ig-card {
+  background: var(--white);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  opacity: 0;
+  animation: card-in 500ms ease-out forwards;
+}
+
+/* A gentle stagger so the wall does not snap into place all at once. */
+.ig-card:nth-child(1) { animation-delay: 0ms; }
+.ig-card:nth-child(2) { animation-delay: 110ms; }
+.ig-card:nth-child(3) { animation-delay: 220ms; }
+.ig-card:nth-child(4) { animation-delay: 330ms; }
+.ig-card:nth-child(5) { animation-delay: 440ms; }
+.ig-card:nth-child(6) { animation-delay: 550ms; }
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-card { animation: none; opacity: 1; }
+}
+
+.ig-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: var(--gray-05);
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.ig-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.ig-meta {
+  flex: 1 1 auto;
+  padding: 24px 26px 22px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.ig-caption {
+  margin: 0 0 auto;
+  font-family: "Roboto", Arial, sans-serif;
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.42;
+  color: var(--gray-90);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  overflow: hidden;
+}
+
+.ig-date {
+  margin: 18px 0 0;
+  font-family: "Roboto Slab", Georgia, serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--gray-70);
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------------- footer */
+
+.ig-footer {
+  flex: 0 0 auto;
+  border-top: 4px solid rgba(255, 255, 255, 0.35);
+  padding-top: 22px;
+}
+
+.ig-follow {
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--white);
+  letter-spacing: 0.01em;
+}
+
+/* --------------------------------------------------------- status screen */
+
+/* The shared .status card is already Wolfpack Red, which would vanish against
+   this slide. Give it a dark field so a failure still reads as a failure. */
+.ig-stage .status {
+  background: var(--black);
+}

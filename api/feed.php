@@ -28,13 +28,7 @@ header('Cache-Control: public, max-age=60');
 
 $config = require __DIR__ . '/../config.php';
 
-/** Emit an error payload and stop. */
-function fail(int $status, string $message): void
-{
-    http_response_code($status);
-    echo json_encode(['error' => $message], JSON_UNESCAPED_SLASHES);
-    exit;
-}
+require_once __DIR__ . '/lib.php';
 
 /* ------------------------------------------------------------------ input */
 
@@ -83,88 +77,39 @@ $cacheAge = (is_readable($cacheFile) && filemtime($cacheFile) !== false)
     ? time() - (int) filemtime($cacheFile)
     : PHP_INT_MAX;
 
-if (!$refresh && $cacheAge < (int) $config['cache_ttl']) {
-    $cached = @file_get_contents($cacheFile);
-    if ($cached !== false && $cached !== '') {
-        echo $cached;
+$cached    = is_readable($cacheFile) ? @file_get_contents($cacheFile) : false;
+$haveCache = ($cached !== false && $cached !== '');
+
+// Fresh enough. Nothing else to do.
+if (!$refresh && $haveCache && $cacheAge < (int) $config['cache_ttl']) {
+    echo $cached;
+    exit;
+}
+
+/*
+ * Stale but usable. Serve it immediately, then refresh after the display has
+ * already been answered.
+ *
+ * This matters more than it looks. These department sites sit behind
+ * Cloudflare, and a cold response to the feed query takes close to thirty
+ * seconds to build while a warm one takes under half a second. Without this, a
+ * display unlucky enough to be the first request after a cache expiry would
+ * hang for half a minute and show its error card.
+ */
+$alreadySent = false;
+
+if (!$refresh && $haveCache && $cacheAge < (int) $config['stale_ttl']) {
+    echo $cached;
+    if (finish_request_and_continue()) {
+        $alreadySent = true;
+    } else {
+        // Cannot detach from the client on this SAPI. Serve stale and let the
+        // scheduled warm-up task handle refreshing; see the README.
         exit;
     }
 }
 
 /* ------------------------------------------------------------------ fetch */
-
-/**
- * Fetch a URL. Uses cURL when present, falls back to the stream wrapper.
- * Returns the body string, or null on any failure.
- */
-function http_get(string $url, int $timeout, string $accept = 'application/json'): ?string
-{
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 3,
-            CURLOPT_TIMEOUT        => $timeout,
-            CURLOPT_CONNECTTIMEOUT => min(5, $timeout),
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_ENCODING       => '', // accept gzip; RSS feeds run to several MB
-            CURLOPT_USERAGENT      => 'NCState-Billboard-News/1.0 (+https://brand.ncsu.edu)',
-            CURLOPT_HTTPHEADER     => ['Accept: ' . $accept],
-        ]);
-        $body = curl_exec($ch);
-        $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
-
-        return ($body !== false && $code >= 200 && $code < 300) ? (string) $body : null;
-    }
-
-    $ctx = stream_context_create([
-        'http' => [
-            'timeout' => $timeout,
-            'header'  => "Accept: " . $accept . "\r\nUser-Agent: NCState-Billboard-News/1.0\r\n",
-        ],
-    ]);
-    $body = @file_get_contents($url, false, $ctx);
-
-    return $body !== false ? (string) $body : null;
-}
-
-/** Turn rendered WordPress HTML into clean single-line plain text. */
-function plain_text(string $html, bool $tightenDashes = true): string
-{
-    $html = preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', '', $html) ?? $html;
-    $text = strip_tags($html);
-    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $text = str_replace(["\xC2\xA0", "\xE2\x80\xA6"], [' ', '...'], $text);
-    $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
-    // WordPress commonly appends "[...]" or "Continue reading ..." to excerpts.
-    $text = preg_replace('/\s*(\[(\.\.\.|&hellip;|…)\]|Continue reading.*)$/iu', '', $text) ?? $text;
-
-    // College of Engineering house style: no space on either side of an em or
-    // en dash. Purely typographic, the wording of the source is untouched.
-    if ($tightenDashes) {
-        $text = preg_replace('/\s*([\x{2014}\x{2013}])\s*/u', '$1', $text) ?? $text;
-    }
-
-    return trim($text);
-}
-
-/** Trim to a character budget on a word boundary, adding an ellipsis. */
-function trim_words(string $text, int $max): string
-{
-    if (mb_strlen($text) <= $max) {
-        return $text;
-    }
-    $cut   = mb_substr($text, 0, $max);
-    $space = mb_strrpos($cut, ' ');
-    if ($space !== false && $space > (int) ($max * 0.6)) {
-        $cut = mb_substr($cut, 0, $space);
-    }
-
-    return rtrim($cut, " ,;:.") . '...';
-}
 
 /**
  * Parse a WordPress RSS feed into the same post shape the REST path produces.
@@ -284,7 +229,18 @@ function rss_date_to_local(string $pubDate, string $timezone): string
 
 $base  = 'https://' . $host;
 $query = [
-    'per_page' => $requireImage ? min(20, $count * 3) : $count, // overfetch, then filter
+    /*
+     * Overfetch, then filter. Thirty is deep enough for departments that post
+     * plenty of stories without a featured image: only five of MSE's thirty
+     * most recent carry one, and a shallow window left that slide nearly empty.
+     *
+     * Deliberately a constant rather than a function of $count. These sites sit
+     * behind Cloudflare, and a cold response for this query takes close to
+     * thirty seconds to build while a warm one takes under half a second.
+     * Varying per_page would create a new cache key per count value and hand
+     * some unlucky display the cold path.
+     */
+    'per_page' => $requireImage ? 30 : $count,
     'orderby'  => 'date',
     'order'    => 'desc',
     'status'   => 'publish',
@@ -299,8 +255,17 @@ if ($tag !== '') {
     $query['tag'] = $tag;
 }
 
-$postsRaw = http_get($base . '/wp-json/wp/v2/posts?' . http_build_query($query), (int) $config['http_timeout']);
-$posts    = $postsRaw !== null ? json_decode($postsRaw, true) : null;
+$restUrl  = $base . '/wp-json/wp/v2/posts?' . http_build_query($query);
+$postsRaw = http_get($restUrl, (int) $config['http_timeout']);
+
+// A department site with a cold CDN cache can miss the first request and answer
+// the second one instantly. Both cbe.ncsu.edu and mae.ncsu.edu did exactly that
+// in testing. One retry is much cheaper than dropping to the RSS path.
+if ($postsRaw === null) {
+    $postsRaw = http_get($restUrl, (int) $config['http_timeout']);
+}
+
+$posts = $postsRaw !== null ? json_decode($postsRaw, true) : null;
 
 /* -------------------------------------------------------------- normalize */
 
@@ -378,17 +343,18 @@ if ($out === []) {
 }
 
 if ($out === []) {
-    // Both paths failed. Stale content beats an error card on a wall.
-    if (is_readable($cacheFile) && $cacheAge < (int) $config['stale_ttl']) {
-        $stale = json_decode((string) file_get_contents($cacheFile), true);
-        if (is_array($stale)) {
-            $stale['stale']    = true;
-            $stale['cacheAge'] = $cacheAge;
-            echo json_encode($stale, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            exit;
-        }
+    // Both paths failed. If stale content already went out, the display is
+    // showing real stories and there is nothing more to say.
+    if ($alreadySent) {
+        exit;
     }
-    fail(502, 'Could not read posts from ' . $host . ' over REST or RSS, and no usable cache is available.');
+    // Otherwise stale content still beats an error card on a wall.
+    serve_stale_or_fail(
+        $cacheFile,
+        $cacheAge,
+        (int) $config['stale_ttl'],
+        'Could not read posts from ' . $host . ' over REST or RSS.'
+    );
 }
 
 /* -------------------------------------------------------------- site name */
@@ -432,4 +398,6 @@ if (is_dir($cacheDir) && is_writable($cacheDir)) {
     }
 }
 
-echo $json;
+if (!$alreadySent) {
+    echo $json;
+}

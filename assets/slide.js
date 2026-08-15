@@ -43,6 +43,10 @@
     mae:  { host: 'mae.ncsu.edu',   label: 'Mechanical and Aerospace Engineering' },
     ne:   { host: 'ne.ncsu.edu',    label: 'Nuclear Engineering' },
     ccee: { host: 'ccee.ncsu.edu',  label: 'Civil, Construction and Environmental Engineering' },
+    bme:  { host: 'bme.ncsu.edu',   label: 'Biomedical Engineering' },
+    cbe:  { host: 'cbe.ncsu.edu',   label: 'Chemical and Biomolecular Engineering' },
+    mse:  { host: 'mse.ncsu.edu',   label: 'Materials Science and Engineering' },
+    ise:  { host: 'ise.ncsu.edu',   label: 'Industrial and Systems Engineering' },
     engr: { host: 'engr.ncsu.edu',  label: 'College of Engineering' }
   };
 

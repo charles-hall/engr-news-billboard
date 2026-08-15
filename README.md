@@ -53,13 +53,38 @@ anything published since the last pass.
 Leave the Slide Scheduler fields blank unless the department wants news to run only
 during certain hours.
 
+### Departments
+
+Ten department keys ship in `config.php`, all verified working:
+
+| Key | Site | Feed path |
+| --- | --- | --- |
+| `csc` | Computer Science | REST |
+| `ece` | Electrical and Computer Engineering | RSS |
+| `mae` | Mechanical and Aerospace Engineering | REST |
+| `ne` | Nuclear Engineering | REST |
+| `ccee` | Civil, Construction and Environmental Engineering | REST |
+| `bme` | Biomedical Engineering | REST |
+| `cbe` | Chemical and Biomolecular Engineering | REST |
+| `mse` | Materials Science and Engineering | REST |
+| `ise` | Industrial and Systems Engineering | REST |
+| `engr` | College of Engineering | REST |
+
+Each billboard entry is just a different URL, so one deployment can run Computer
+Science on a display in EB2 and CCEE on another in Mann Hall.
+
+`ise` is formally the Edward P. Fitts Department of Industrial and Systems
+Engineering. The label is shortened because the eyebrow sits directly above the
+headline and the full name crowds it. Change it in `config.php` to use the full
+name.
+
 ---
 
 ## URL parameters
 
 | Parameter | Default | Notes |
 | --- | --- | --- |
-| `site` | `csc` | Key from `config.php`: `csc`, `ece`, `mae`, `ne`, `ccee`, `engr` |
+| `site` | `csc` | Key from `config.php`, see the department table above |
 | `count` | `5` | Stories in the deck, 1 to 12 |
 | `dwell` | `12` | Seconds per story, 4 to 120 |
 | `theme` | `light` | `light` or `dark` |
@@ -76,6 +101,98 @@ index.html?site=ece&count=6&dwell=10
 index.html?site=ccee&theme=dark
 index.html?site=engr&count=4&dwell=15&category=research
 ```
+
+---
+
+## The Instagram slide
+
+A second slide shows recent Instagram posts as four white cards on a Wolfpack Red
+field. Instagram posts are square, so the news slide's split layout does not
+apply, and captions are short by design because hashtag-heavy caption text reads
+poorly from across a lobby.
+
+```
+https://YOUR-SERVER/billboard/instagram.html?site=csc&count=4
+```
+
+Billboard settings: 20 seconds, reload **Yes**. There is nothing to cycle through,
+so the duration is just how long you want it on screen.
+
+### It needs no Meta credentials
+
+This is the part worth understanding before anyone offers to "get you an API key."
+
+The obvious approach is the Instagram API. That path requires the account
+converted to a Business or Creator account, a Meta developer app, App Review to
+go live, and a long-lived token that expires every 60 days and must be
+programmatically refreshed. For unattended signage that last item is the real
+risk: the board goes blank two months after launch and nobody knows why.
+
+None of that is necessary, because csc.ncsu.edu and ece.ncsu.edu already run
+Smash Balloon Instagram Feed Pro. That plugin already holds the credentials and
+already refreshes its own token. `api/instagram.php` reads the feed the plugin
+has already rendered on the department's own site and normalizes it to JSON.
+
+The tradeoff is that this parses Smash Balloon's markup, so a major plugin update
+could change it. That failure is soft: the proxy keeps serving its last good
+cache for up to twelve hours, and the news slide is unaffected.
+
+### Images are mirrored, not hotlinked
+
+Instagram CDN URLs are signed and expire. A slide that linked to them directly
+would show broken images the moment a signature lapsed. Every image is copied
+into the cache directory instead and served through `api/image.php`, which only
+reads files already mirrored and never fetches anything itself.
+
+### Instagram URL parameters
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `site` | `csc` | Key that appears in both `sites` and `instagram` in `config.php` |
+| `count` | `4` | Posts to show, 1 to 8. Four fits the grid cleanly |
+| `refresh` | `900` | Seconds between refreshes |
+| `label` | none | Override the small line above the handle |
+
+### Adding a department to the Instagram slide
+
+Add an entry to the `instagram` array in `config.php`:
+
+```php
+'mae' => ['handle' => 'ncstatemae', 'path' => '/'],
+```
+
+`path` is the page on that department's site that renders the feed. The homepage
+works and needs nothing created. A dedicated page carrying only the
+`[instagram-feed num=8]` shortcode is better if you want more than the four posts
+the homepage widget shows, or if you want the slide insulated from homepage
+redesigns. Set that page to noindex and point `path` at it.
+
+Captions are trimmed: trailing hashtag blocks and "link in bio" tails are
+removed, but hashtags used mid-sentence are kept, because deleting `#NCStateCS`
+from "Congrats to #NCStateCS student ..." breaks the sentence. Set
+`clean_captions` to `false` in `config.php` for verbatim captions.
+
+---
+
+## Keeping the caches warm
+
+Worth doing, and it takes two minutes.
+
+These department sites sit behind Cloudflare. A cold response to the feed query
+takes close to **thirty seconds** to build, while a warm one takes under half a
+second. `feed.php` already handles this with stale-while-revalidate: it serves
+the cached copy instantly and refreshes after the display has been answered, so a
+billboard never waits. But the very first request after a deploy still pays full
+price, and stale-while-revalidate needs PHP-FPM, which Plesk uses by default.
+
+`tools/warm.sh` removes the question entirely. Edit `BILLBOARD_URL` at the top,
+then in Plesk go to **Websites & Domains > Scheduled Tasks > Add Task**:
+
+- Task type: **Run a command**
+- Command: `/bin/sh /var/www/vhosts/YOUR-DOMAIN/httpdocs/billboard/tools/warm.sh`
+- Run: every 10 minutes (`*/10 * * * *`)
+
+Every display then hits a warm cache every time.
 
 ---
 
@@ -248,17 +365,25 @@ featured image URL is returning an error. Check it directly.
 ## Repository layout
 
 ```
-index.html            the slide
-assets/slide.css      layout and brand styling
-assets/slide.js       fetch, rotation, scaling, AP dates
-assets/fonts.css      self-hosted Roboto family
-assets/fonts/         woff2 files (SIL Open Font License 1.1)
-api/feed.php          cached WordPress REST proxy
-config.php            department allowlist and defaults
-tools/screenshot.js   development only, renders the slide headless for review
+index.html             the news slide
+instagram.html         the Instagram slide
+assets/slide.css       layout and brand styling, shared stage
+assets/slide.js        news fetch, rotation, scaling, AP dates
+assets/instagram.css   Instagram grid styling
+assets/instagram.js    Instagram fetch and rendering
+assets/fonts.css       self-hosted Roboto family
+assets/fonts/          woff2 files (SIL Open Font License 1.1)
+api/lib.php            shared helpers: fetch, cache, text cleanup
+api/feed.php           cached WordPress REST proxy with RSS fallback
+api/instagram.php      Instagram proxy, reads Smash Balloon, mirrors images
+api/image.php          serves mirrored Instagram images
+config.php             department allowlist and defaults
+tools/warm.sh          scheduled cache warm-up, see above
+tools/screenshot.js    development only, renders a slide headless for review
 ```
 
-`tools/` is not needed in production and can be excluded from deployment.
+`tools/screenshot.js` is not needed in production. `tools/warm.sh` is, if you set
+up the scheduled task.
 
 ---
 

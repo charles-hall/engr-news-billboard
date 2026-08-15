@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NC State Instagram Slide</title>
+<meta name="viewport" content="width=1920, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Digital signage slide showing recent Instagram posts from an NC State University department account.">
+
+<link rel="preload" href="assets/fonts/roboto-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/roboto-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/slide.css">
+<link rel="stylesheet" href="assets/instagram.css">
+</head>
+<body>
+
+<div id="stage" class="stage ig-stage" aria-live="polite">
+
+  <header class="ig-header">
+    <div>
+      <p id="igEyebrow" class="ig-eyebrow">NC State University</p>
+      <h1 id="igHandle" class="ig-handle">@ncstate</h1>
+    </div>
+    <p class="ig-kicker">Latest on Instagram</p>
+  </header>
+
+  <div id="igGrid" class="ig-grid"><!-- cards injected here --></div>
+
+  <footer class="ig-footer">
+    <span id="igFollow" class="ig-follow">Follow along at instagram.com/ncstate</span>
+  </footer>
+
+</div>
+
+<template id="igCardTemplate">
+  <article class="ig-card">
+    <div class="ig-photo">
+      <img class="ig-img" alt="" decoding="async">
+    </div>
+    <div class="ig-meta">
+      <p class="ig-caption"></p>
+      <p class="ig-date"></p>
+    </div>
+  </article>
+</template>
+
+<script src="assets/instagram.js"></script>
+</body>
+</html>
