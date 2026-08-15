@@ -24,8 +24,9 @@ SITES="${SITES:-csc ece mae ne ccee bme cbe mse ise engr}"
 IG_SITES="${IG_SITES:-csc ece ccee}"
 COUNT="${COUNT:-5}"
 
-# Must match cache_dir in config.php.
-CACHE_DIR="${CACHE_DIR:-/tmp/ncstate-billboard-cache}"
+# Must match cache_dir in config.php. Default is the deployment's own cache/
+# directory, since a PHP-FPM restart wipes anything under a PrivateTmp /tmp.
+CACHE_DIR="${CACHE_DIR:-$(cd "$(dirname "$0")/.." && pwd)/cache}"
 LOG="$CACHE_DIR/warm-last-run.txt"
 
 mkdir -p "$CACHE_DIR" 2>/dev/null

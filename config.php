@@ -71,10 +71,25 @@ return [
     'stale_ttl' => 43200,
 
     /**
-     * Where cached JSON lives. The system temp directory needs no setup on
-     * Plesk. Point this at a private directory if you prefer.
+     * Where cached feeds and mirrored images live.
+     *
+     * A directory inside the deployment, not the system temp directory.
+     * /tmp looked convenient and was not: PHP-FPM on Plesk often runs with
+     * systemd PrivateTmp, so restarting the pool (which is what enabling a PHP
+     * extension does) destroys every cache on the box. Every feed then has to
+     * be refetched from a cold origin at once, which is the exact stampede all
+     * this caching exists to prevent.
+     *
+     * The contents are public news and public Instagram posts, so there is
+     * nothing here that would matter if it were served. `cache/` is in
+     * .gitignore, so deployments do not clobber it.
+     *
+     * Falls back to the temp directory if this path cannot be created, which
+     * keeps the slides working on a read-only deployment.
      */
-    'cache_dir' => sys_get_temp_dir() . '/ncstate-billboard-cache',
+    'cache_dir' => is_writable(__DIR__) || is_dir(__DIR__ . '/cache')
+        ? __DIR__ . '/cache'
+        : sys_get_temp_dir() . '/ncstate-billboard-cache',
 
     /**
      * Seconds to wait on the department site before giving up. Generous on

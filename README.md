@@ -330,11 +330,22 @@ You should get JSON with five posts. If you get an error, see Troubleshooting.
 Copy the repository contents to the target folder over SFTP. Same result, but
 someone has to remember to do it again next time.
 
-### File permissions
+### The cache directory
 
-Nothing needs to be writable in the web root. Cached feeds go to the system temp
-directory, which PHP can already write to. To move the cache somewhere else, change
-`cache_dir` in `config.php` and make sure the PHP user can write there.
+Cached feeds and mirrored images go to `cache/` inside the deployment, which the
+PHP user needs to be able to write. It is in `.gitignore`, so a `git pull` never
+touches it, and the contents are public news and public Instagram posts, so
+nothing there matters if it is served.
+
+It deliberately does not use the system temp directory. PHP-FPM on Plesk often
+runs with systemd `PrivateTmp`, which means restarting the pool destroys
+everything under `/tmp`. Restarting the pool is exactly what enabling a PHP
+extension does, so a routine change wipes every cache on the box and every feed
+gets refetched from a cold origin at once, which is the stampede all of this
+caching exists to prevent. It cost us that once.
+
+If `cache/` cannot be created, `config.php` falls back to the temp directory so
+the slides keep working on a read-only deployment.
 
 ---
 
