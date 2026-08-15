@@ -110,6 +110,11 @@ function plain_text(string $html, bool $tightenDashes = true): string
         $text = preg_replace('/\s*([\x{2014}\x{2013}])\s*/u', '$1', $text) ?? $text;
     }
 
+    // A backtick between two letters is a mistyped apostrophe, not punctuation.
+    // CCEE's Instagram captions are full of them ("We`re", "Centennial`s") and
+    // they look like a rendering fault when blown up on a wall.
+    $text = preg_replace('/(?<=\p{L})`(?=\p{L})/u', "\u{2019}", $text) ?? $text;
+
     return trim($text);
 }
 

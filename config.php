@@ -107,8 +107,31 @@ return [
      *          be set to show more posts.
      */
     'instagram' => [
-        'csc' => ['handle' => 'ncstatecs',   'path' => '/'],
-        'ece' => ['handle' => 'ncstateece',  'path' => '/'],
+        'csc'  => ['handle' => 'ncstatecs',   'path' => '/'],
+        'ece'  => ['handle' => 'ncstateece',  'path' => '/'],
+        'ccee' => ['handle' => 'ncstateccee', 'path' => '/'],
+
+        /*
+         * The rest are not enabled because their sites do not publish a feed
+         * this can read. Enabling one is a WordPress task, not a change here.
+         *
+         * engr.ncsu.edu HAS Smash Balloon active but renders no feed on the
+         * homepage. Add a page carrying only [instagram-feed num=8], set it to
+         * noindex, then uncomment this and point path at it:
+         *
+         *   'engr' => ['handle' => 'ncstateengr', 'path' => '/instagram-feed/'],
+         *
+         * mae, ne, bme, cbe, mse and ise do not have the plugin installed at
+         * all. Each links to an Instagram account from the footer, so the
+         * accounts exist:
+         *
+         *   mae  -> ncstatemae        ne  -> ncstatenuclear
+         *   bme  -> (no link found)   cbe -> ncstatecbe
+         *   mse  -> ncstatemse        ise -> ncstateise
+         *
+         * Installing and authenticating Smash Balloon on those sites is the
+         * only prerequisite; nothing in this repository needs to change.
+         */
     ],
 
     /** Seconds to keep the parsed Instagram feed before refetching. */

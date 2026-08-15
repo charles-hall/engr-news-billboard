@@ -153,6 +153,37 @@ reads files already mirrored and never fetches anything itself.
 | `refresh` | `900` | Seconds between refreshes |
 | `label` | none | Override the small line above the handle |
 
+### Which departments work today
+
+The slide can only read a feed the department's own site actually publishes.
+
+| Key | Handle | Status |
+| --- | --- | --- |
+| `csc` | @ncstatecs | Working, four posts from the homepage |
+| `ece` | @ncstateece | Working, four posts from the homepage |
+| `ccee` | @ncstateccee | Working, three posts from the homepage |
+| `engr` | @ncstateengr | Plugin active but no feed rendered. Needs a shortcode page |
+| `mae` | @ncstatemae | Smash Balloon not installed |
+| `ne` | @ncstatenuclear | Smash Balloon not installed |
+| `cbe` | @ncstatecbe | Smash Balloon not installed |
+| `mse` | @ncstatemse | Smash Balloon not installed |
+| `ise` | @ncstateise | Smash Balloon not installed |
+| `bme` | none found | No Instagram link on the site |
+
+engr.ncsu.edu is the quick win: the plugin is already active and authenticated,
+it just does not render a feed on the homepage. Add a page holding only
+`[instagram-feed num=8]`, set it to noindex, then uncomment the `engr` line in
+`config.php` and point `path` at that page.
+
+The six without the plugin need it installed and authenticated on their own
+site. That is a WordPress task on their end; nothing in this repository changes.
+The handles above came from the Instagram links in each site's footer, so the
+accounts exist, but confirm them with each department before going live.
+
+The slide sizes itself to whatever comes back. Three posts render as three
+centred tiles at the same size as four, rather than stretching to fill the width,
+which would make each photo taller and squeeze the captions.
+
 ### Adding a department to the Instagram slide
 
 Add an entry to the `instagram` array in `config.php`:

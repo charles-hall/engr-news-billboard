@@ -58,7 +58,8 @@
 .ig-grid {
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, 434px); /* instagram.js sizes to the post count */
+  justify-content: center;
   gap: 26px;
   padding: 30px 0;
   min-height: 0;

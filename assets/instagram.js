@@ -10,7 +10,7 @@
 
    URL parameters (all optional):
      site=csc        key from config.php (must also appear in the instagram array)
-     count=4         number of posts, 1-8
+     count=4         number of posts, 1-6 (they share one row)
      refresh=900     seconds between refreshes
      label=...       override the small line above the handle
 
@@ -25,7 +25,7 @@
 
   var CONFIG = {
     site:    (params.get('site') || 'csc').toLowerCase().replace(/[^a-z0-9_-]/g, ''),
-    count:   clamp(parseInt(params.get('count'), 10) || 4, 1, 8),
+    count:   clamp(parseInt(params.get('count'), 10) || 4, 1, 6),
     refresh: clamp(parseInt(params.get('refresh'), 10) || 900, 120, 86400),
     label:   params.get('label') || ''
   };
@@ -35,6 +35,12 @@
                    'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
 
   var TZ = 'America/New_York';
+
+  // Stage width minus the stage's 56px side padding, and the grid gap, both
+  // matching instagram.css. TILE_MAX is the width four tiles get.
+  var GRID_WIDTH = 1808;
+  var GRID_GAP   = 26;
+  var TILE_MAX   = 434;
 
   var stage    = document.getElementById('stage');
   var grid     = document.getElementById('igGrid');
@@ -115,6 +121,19 @@
     followEl.textContent = 'Follow along at instagram.com/' + handle;
 
     grid.innerHTML = '';
+
+    /*
+     * Size the tiles, then centre them, rather than stretching to fill.
+     *
+     * CCEE's homepage widget publishes three posts, not four. Stretching three
+     * tiles across the full width made each photo half again as tall, which ate
+     * the caption area and cut every caption off mid-sentence. Holding the tile
+     * width constant keeps the photo square and the caption readable no matter
+     * how many posts come back.
+     */
+    var n     = data.posts.length;
+    var tile  = Math.min(TILE_MAX, Math.floor((GRID_WIDTH - (n - 1) * GRID_GAP) / n));
+    grid.style.gridTemplateColumns = 'repeat(' + n + ', ' + tile + 'px)';
 
     data.posts.forEach(function (post) {
       var card = template.content.firstElementChild.cloneNode(true);
