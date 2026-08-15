@@ -111,6 +111,21 @@ return [
      */
     'time_budget' => 20,
 
+    /*
+     * The same two limits, but for a scheduled warm-up run (refresh=1).
+     *
+     * Nothing is waiting on a warm-up, so it can afford to sit through a cold
+     * origin that a display never should. cbe.ncsu.edu takes about twenty-eight
+     * seconds to build its feed response cold, and ece.ncsu.edu has slow spells
+     * of its own, so both were failing the warm run under the display limits
+     * and leaving no cache behind for the displays that followed.
+     *
+     * The scripts raise max_execution_time to match when refresh=1, so this
+     * works on a host with the usual 30 second default.
+     */
+    'warm_http_timeout' => 45,
+    'warm_time_budget'  => 120,
+
     /**
      * User agent sent to department sites.
      *

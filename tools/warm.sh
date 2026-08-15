@@ -49,7 +49,7 @@ failed=""
 
 warm_one() {
     # $1 = label for the report, $2 = url
-    if curl -fsS -m 90 -o /dev/null "$2"; then
+    if curl -fsS -m 180 -o /dev/null "$2"; then
         ok=$((ok + 1))
     else
         failed="$failed $1"

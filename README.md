@@ -288,6 +288,13 @@ No arguments needed. `BILLBOARD_URL` already defaults to the live deployment.
 
 Every display then hits a warm cache every time.
 
+A warm-up run gets much longer limits than a display request
+(`warm_http_timeout` and `warm_time_budget`, 45 and 120 seconds against 15 and
+20). Nothing is waiting on it, so it can afford to sit through a cold origin
+that a display never should: cbe.ncsu.edu takes about twenty-eight seconds to
+build its feed response cold, and was failing the warm run under the display
+limits, leaving no cache behind for the displays that came after.
+
 Each run writes a report to the cache directory, and `tools/diagnose.php` shows
 it at the top: when it last ran, how many feeds succeeded, and which failed.
 Without that, a warm-up that was never scheduled and one that runs and fails

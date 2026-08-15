@@ -117,11 +117,27 @@ function maybe_gunzip(string $body): string
 }
 
 /**
+ * Why the last http_get() failed: 'timeout', 'http', 'other', or '' if it did
+ * not. A caller can use this to decide whether retrying is worth anything.
+ */
+function last_fetch_failure(?string $set = null): string
+{
+    static $kind = '';
+    if ($set !== null) {
+        $kind = $set;
+    }
+
+    return $kind;
+}
+
+/**
  * Fetch a URL. Uses cURL when present, falls back to the stream wrapper.
  * Returns the body string, or null on any failure.
  */
 function http_get(string $url, int $timeout, string $accept = 'application/json'): ?string
 {
+    last_fetch_failure('');
+
     if ($timeout < 1) {
         return null; // budget spent
     }
@@ -142,11 +158,19 @@ function http_get(string $url, int $timeout, string $accept = 'application/json'
         ]);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        $errno = curl_errno($ch);
         curl_close($ch);
 
-        return ($body !== false && $code >= 200 && $code < 300)
-            ? maybe_gunzip((string) $body)
-            : null;
+        if ($body !== false && $code >= 200 && $code < 300) {
+            return maybe_gunzip((string) $body);
+        }
+
+        // 28 is CURLE_OPERATION_TIMEDOUT, 7 is CURLE_COULDNT_CONNECT. Both mean
+        // the host is not answering, so an immediate retry just spends another
+        // full timeout to learn the same thing.
+        last_fetch_failure(in_array($errno, [7, 28], true) ? 'timeout' : ($code > 0 ? 'http' : 'other'));
+
+        return null;
     }
 
     // Ask for uncompressed explicitly. Origins that honour it save us the
@@ -159,9 +183,18 @@ function http_get(string $url, int $timeout, string $accept = 'application/json'
                        . "User-Agent: " . upstream_user_agent() . "\r\n",
         ],
     ]);
-    $body = @file_get_contents($url, false, $ctx);
+    $started = microtime(true);
+    $body    = @file_get_contents($url, false, $ctx);
 
-    return $body !== false ? maybe_gunzip((string) $body) : null;
+    if ($body !== false) {
+        return maybe_gunzip((string) $body);
+    }
+
+    // The stream wrapper gives no error code, so infer a timeout from how long
+    // it spent before giving up.
+    last_fetch_failure((microtime(true) - $started) >= ($timeout - 1) ? 'timeout' : 'other');
+
+    return null;
 }
 
 /** Turn rendered HTML into clean single-line plain text. */

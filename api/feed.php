@@ -62,8 +62,17 @@ $tag      = isset($_GET['tag'])      ? preg_replace('/[^a-z0-9_-]/i', '', (strin
 $refresh = isset($_GET['refresh']) && filter_var($_GET['refresh'], FILTER_VALIDATE_BOOLEAN);
 
 $tightenDashes = (bool) ($config['tighten_dashes'] ?? true);
-$budget        = (int) ($config['time_budget'] ?? 20);
-$timeout       = (int) $config['http_timeout'];
+/*
+ * A warm-up run has no display waiting on it, so it gets far longer to sit
+ * through a cold origin. A request from a slide keeps the tight limits: on a
+ * wall, late is the same as broken.
+ */
+$budget  = $refresh ? (int) ($config['warm_time_budget'] ?? 120) : (int) ($config['time_budget'] ?? 20);
+$timeout = $refresh ? (int) ($config['warm_http_timeout'] ?? 45) : (int) $config['http_timeout'];
+
+if ($refresh) {
+    @set_time_limit($budget + 60);
+}
 
 upstream_user_agent((string) ($config['user_agent'] ?? ''));
 
@@ -276,11 +285,15 @@ if ($source_pref !== 'rss') {
     $restUrl  = $base . '/wp-json/wp/v2/posts?' . http_build_query($query);
     $postsRaw = http_get($restUrl, min($timeout, time_left($budget)));
 
-    // A department site with a cold CDN cache can miss the first request and
-    // answer the second one instantly. Both cbe.ncsu.edu and mae.ncsu.edu did
-    // exactly that in testing, so one retry is worth it, but only while there
-    // is budget left to spend.
-    if ($postsRaw === null && time_left($budget) > 3) {
+    /*
+     * A department site with a cold CDN cache can miss the first request and
+     * answer the second one instantly, so one retry is worth it. But not when
+     * the first attempt timed out: a host that is not answering will not answer
+     * the retry either, and the second full timeout is time the RSS fallback
+     * needs. ece.ncsu.edu spent 119 seconds this way, three doomed attempts
+     * deep, before giving up.
+     */
+    if ($postsRaw === null && last_fetch_failure() !== 'timeout' && time_left($budget) > 3) {
         $postsRaw = http_get($restUrl, min($timeout, time_left($budget)));
     }
 

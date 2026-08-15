@@ -70,7 +70,13 @@ $refresh = isset($_GET['refresh']) && filter_var($_GET['refresh'], FILTER_VALIDA
 $base = 'https://' . $host;
 
 upstream_user_agent((string) ($config['user_agent'] ?? ''));
-$budget = (int) ($config['time_budget'] ?? 20);
+// A warm-up run has no display waiting on it; see the note in feed.php.
+$budget  = $refresh ? (int) ($config['warm_time_budget'] ?? 120) : (int) ($config['time_budget'] ?? 20);
+$timeout = $refresh ? (int) ($config['warm_http_timeout'] ?? 45) : (int) $config['http_timeout'];
+
+if ($refresh) {
+    @set_time_limit($budget + 60);
+}
 
 /* ------------------------------------------------------------------ cache */
 
@@ -146,7 +152,7 @@ if (!$refresh && $haveCache && $cacheAge < (int) $config['stale_ttl']) {
 
 /* ------------------------------------------------------------------ fetch */
 
-$htmlDoc = http_get($base . $path, min((int) $config['http_timeout'], time_left($budget)), 'text/html');
+$htmlDoc = http_get($base . $path, min($timeout, time_left($budget)), 'text/html');
 
 if ($htmlDoc === null && $alreadySent) {
     exit; // the display already has real posts; nothing more to say
@@ -448,7 +454,7 @@ foreach ($payload['posts'] as &$post) {
     $age  = is_readable($file) ? time() - (int) filemtime($file) : PHP_INT_MAX;
 
     if ($age > (int) $config['instagram_image_ttl']) {
-        $bytes = http_get($post['image'], (int) $config['http_timeout'], 'image/*');
+        $bytes = http_get($post['image'], min($timeout, time_left($budget)), 'image/*');
         // Check the magic bytes before writing anything to disk.
         if ($bytes !== null && strlen($bytes) > 1024 && strncmp($bytes, "\xFF\xD8\xFF", 3) === 0) {
             $tmp = $file . '.' . getmypid() . '.tmp';
