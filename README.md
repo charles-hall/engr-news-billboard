@@ -153,6 +153,35 @@ reads files already mirrored and never fetches anything itself.
 | `refresh` | `900` | Seconds between refreshes |
 | `label` | none | Override the small line above the handle |
 
+### When an Instagram slide will not load
+
+`api/instagram.php` answers with a 502 and an error that names what it actually
+saw. Add `&debug=1` to get the same information as a normal response:
+
+```
+https://YOUR-SERVER/billboard/api/instagram.php?site=ece&debug=1
+```
+
+```json
+{ "fetched_bytes": 580122, "sbi_item": 4, "data_full_res": 4,
+  "plugin_present": true, "posts_parsed": 4 }
+```
+
+Read it like this:
+
+- **`fetched_bytes` is 0, or the error says "Could not load"** - this server
+  cannot reach that page. Not a parsing problem. Check outbound access and
+  whether a WAF is treating the server differently from a browser.
+- **Bytes came back but `sbi_item` is 0** - that page does not render a Smash
+  Balloon feed. Either `path` points at the wrong page, or the site is serving
+  this server a different variant than it serves a browser, which some WAFs do.
+- **`sbi_item` is greater than 0 but `posts_parsed` is 0** - the plugin's markup
+  has changed. Send the numbers along and the parser can be adjusted.
+
+The parser splits posts with `explode()` rather than one lazy regex across the
+whole document, and falls back to scanning for images directly if the wrapper
+markup is not what it expects, so a plugin update degrades rather than fails.
+
 ### Which departments work today
 
 The slide can only read a feed the department's own site actually publishes.

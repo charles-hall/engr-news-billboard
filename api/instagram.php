@@ -97,7 +97,12 @@ if (!$refresh && $cacheAge < (int) $config['instagram_cache_ttl']) {
 $htmlDoc = http_get($base . $path, min((int) $config['http_timeout'], time_left($budget)), 'text/html');
 
 if ($htmlDoc === null) {
-    serve_stale_or_fail($cacheFile, $cacheAge, (int) $config['stale_ttl'], 'Could not load ' . $host . $path . '.');
+    serve_stale_or_fail(
+        $cacheFile,
+        $cacheAge,
+        (int) $config['stale_ttl'],
+        'Could not load https://' . $host . $path . ' from this server. It may be blocked, slow, or refusing this host.'
+    );
 }
 
 /* ------------------------------------------------------------------ parse */
@@ -119,60 +124,108 @@ function clean_caption(string $text): string
     return trim($text, " \t\n\r\0\x0B-–—:;,");
 }
 
-/** Smash Balloon renders each post as a div carrying id, date and permalink. */
+/**
+ * Pull posts out of the markup Smash Balloon renders.
+ *
+ * Blocks are split with explode() rather than one big lazy regex across the
+ * whole document. These department homepages run to half a megabyte, and a
+ * pattern like `(.*?)` spanning that much text is at the mercy of whatever
+ * pcre.backtrack_limit the host happens to set: it returns false rather than
+ * no-match, which looks identical to "this site has no Instagram feed."
+ *
+ * If the expected wrapper is missing entirely, the fallback scan below still
+ * recovers the images, so a plugin markup change degrades instead of failing.
+ */
 function parse_smashballoon(string $html, int $count, bool $cleanCaptions, int $captionMax, bool $tightenDashes): array
 {
-    // Each post block runs from one sbi_item to the next, or to the load-more
-    // button that closes the feed.
-    if (!preg_match_all(
-        '/<div class="sbi_item[^"]*"(.*?)(?=<div class="sbi_item|<div id="sbi_load|<\/div><\/div><\/div>)/s',
-        $html,
-        $matches
-    )) {
-        return [];
-    }
+    $blocks = explode('class="sbi_item', $html);
+    array_shift($blocks); // everything before the first post
 
     $out = [];
-    foreach ($matches[1] as $item) {
-        // The rendered <img> is a lazy-load placeholder; the real image lives
-        // in data-full-res on the anchor.
-        if (!preg_match('/data-full-res="([^"]+)"/i', $item, $m)) {
-            continue;
-        }
-        $image = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        if (!preg_match('#^https://[a-z0-9.-]+\.(?:cdninstagram\.com|fbcdn\.net)/#i', $image)) {
-            continue; // only ever mirror images from Instagram's own CDN
-        }
-
-        $id   = preg_match('/id="sbi_([0-9]+)"/', $item, $m) ? $m[1] : sha1($image);
-        $url  = preg_match('#href="(https://www\.instagram\.com/(?:p|reel)/[^"]+)"#', $item, $m)
-            ? html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8')
-            : '';
-        $ts   = preg_match('/data-date="([0-9]+)"/', $item, $m) ? (int) $m[1] : 0;
-
-        $caption = '';
-        if (preg_match('/<span\s+class="sbi_caption">(.*?)<\/span>/s', $item, $m)) {
-            $caption = plain_text($m[1], $tightenDashes);
-            if ($cleanCaptions) {
-                $caption = clean_caption($caption);
+    foreach ($blocks as $block) {
+        // Trim to this post: whichever end marker comes first.
+        foreach (['class="sbi_item', '<div id="sbi_load'] as $stop) {
+            $at = strpos($block, $stop);
+            if ($at !== false) {
+                $block = substr($block, 0, $at);
             }
-            $caption = trim_words($caption, $captionMax);
         }
 
-        $out[] = [
-            'id'      => $id,
-            'url'     => $url,
-            'caption' => $caption,
-            'dateISO' => $ts > 0 ? gmdate('Y-m-d\TH:i:s\Z', $ts) : '',
-            'image'   => $image,
-        ];
-
+        $post = post_from_block($block, $cleanCaptions, $captionMax, $tightenDashes);
+        if ($post !== null) {
+            $out[] = $post;
+        }
         if (count($out) >= $count) {
-            break;
+            return $out;
+        }
+    }
+
+    if ($out !== []) {
+        return $out;
+    }
+
+    /*
+     * Fallback: the wrapper markup is not what we expect, but the images are
+     * still in the page. Recover what we can rather than showing nothing.
+     */
+    if (preg_match_all('/data-full-res="([^"]+)"/i', $html, $m, PREG_OFFSET_CAPTURE)) {
+        foreach ($m[1] as $i => $hit) {
+            // Look at the markup immediately around each image for its id,
+            // date, permalink and caption.
+            $from  = max(0, $hit[1] - 4000);
+            $slice = substr($html, $from, 9000);
+
+            $post = post_from_block($slice, $cleanCaptions, $captionMax, $tightenDashes);
+            if ($post !== null) {
+                $post['image'] = html_entity_decode($hit[0], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $out[] = $post;
+            }
+            if (count($out) >= $count) {
+                break;
+            }
         }
     }
 
     return $out;
+}
+
+/** Read one post out of a chunk of markup, or null if there is no image in it. */
+function post_from_block(string $block, bool $cleanCaptions, int $captionMax, bool $tightenDashes): ?array
+{
+    // The rendered <img> is a lazy-load placeholder; the real image lives in
+    // data-full-res on the anchor.
+    if (!preg_match('/data-full-res="([^"]+)"/i', $block, $m)) {
+        return null;
+    }
+    $image = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+    // Only ever mirror images from Instagram's own CDN.
+    if (!preg_match('#^https://[a-z0-9.-]+\.(?:cdninstagram\.com|fbcdn\.net)/#i', $image)) {
+        return null;
+    }
+
+    $id = preg_match('/id="sbi_([0-9]+)"/', $block, $m) ? $m[1] : sha1($image);
+    $url = preg_match('#href="(https://www\.instagram\.com/(?:p|reel)/[^"]+)"#', $block, $m)
+        ? html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+        : '';
+    $ts = preg_match('/data-date="([0-9]+)"/', $block, $m) ? (int) $m[1] : 0;
+
+    $caption = '';
+    if (preg_match('/class="sbi_caption"[^>]*>(.*?)<\/span>/s', $block, $m)) {
+        $caption = plain_text($m[1], $tightenDashes);
+        if ($cleanCaptions) {
+            $caption = clean_caption($caption);
+        }
+        $caption = trim_words($caption, $captionMax);
+    }
+
+    return [
+        'id'      => $id,
+        'url'     => $url,
+        'caption' => $caption,
+        'dateISO' => $ts > 0 ? gmdate('Y-m-d\TH:i:s\Z', $ts) : '',
+        'image'   => $image,
+    ];
 }
 
 $posts = parse_smashballoon(
@@ -183,13 +236,45 @@ $posts = parse_smashballoon(
     (bool) ($config['tighten_dashes'] ?? true)
 );
 
+/*
+ * When this fails it fails on someone else's server, where none of the usual
+ * tools are to hand, so the error carries what was actually seen: how much
+ * markup came back and which Smash Balloon markers were in it. "No posts found"
+ * on its own cannot distinguish a blocked fetch from a markup change.
+ */
 if ($posts === []) {
+    $diag = sprintf(
+        'Fetched %s bytes from %s%s. Markers seen: sbi_item=%d, data-full-res=%d, instagram-feed plugin=%s.',
+        number_format(strlen($htmlDoc)),
+        $host,
+        $path,
+        substr_count($htmlDoc, 'class="sbi_item'),
+        substr_count($htmlDoc, 'data-full-res="'),
+        strpos($htmlDoc, 'plugins/instagram-feed') !== false ? 'yes' : 'no'
+    );
+
     serve_stale_or_fail(
         $cacheFile,
         $cacheAge,
         (int) $config['stale_ttl'],
-        'Found no Instagram posts on ' . $host . $path . '. The feed may have moved, or the plugin markup may have changed.'
+        'Found no Instagram posts. ' . $diag
     );
+}
+
+// ?debug=1 reports what the parser saw without changing what it does.
+if (isset($_GET['debug'])) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'host'           => $host,
+        'path'           => $path,
+        'fetched_bytes'  => strlen($htmlDoc),
+        'sbi_item'       => substr_count($htmlDoc, 'class="sbi_item'),
+        'data_full_res'  => substr_count($htmlDoc, 'data-full-res="'),
+        'plugin_present' => strpos($htmlDoc, 'plugins/instagram-feed') !== false,
+        'posts_parsed'   => count($posts),
+        'titles'         => array_map(static fn ($p) => mb_substr($p['caption'], 0, 60), $posts),
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
 /* --------------------------------------------------------- mirror images */
