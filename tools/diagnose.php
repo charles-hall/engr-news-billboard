@@ -83,7 +83,15 @@ $cacheDir = (string) $config['cache_dir'];
 <table>
   <tr><th>Check</th><th>Value</th></tr>
   <tr><td>PHP version</td><td><?= htmlspecialchars(PHP_VERSION) ?></td></tr>
-  <tr><td>cURL extension</td><td class="<?= function_exists('curl_init') ? 'ok' : 'bad' ?>"><?= function_exists('curl_init') ? 'present' : 'missing, using stream wrapper' ?></td></tr>
+  <tr><td>cURL extension</td><td class="<?= function_exists('curl_init') ? 'ok' : 'bad' ?>"><?= function_exists('curl_init') ? 'present' : 'missing, using the stream wrapper' ?></td></tr>
+  <tr>
+    <td>zlib (gzdecode)</td>
+    <td class="<?= function_exists('gzdecode') ? 'ok' : 'bad' ?>">
+      <?= function_exists('gzdecode') ? 'present' : 'MISSING' ?><br>
+      <span class="ms">Required. Some origins send gzip whether or not it was requested,
+      and without this the response is unreadable binary.</span>
+    </td>
+  </tr>
   <tr><td>max_execution_time</td><td><?= htmlspecialchars((string) ini_get('max_execution_time')) ?>s (time_budget is <?= (int) ($config['time_budget'] ?? 20) ?>s)</td></tr>
   <tr><td>memory_limit</td><td><?= htmlspecialchars((string) ini_get('memory_limit')) ?></td></tr>
   <tr>

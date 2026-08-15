@@ -81,6 +81,42 @@ function upstream_user_agent(?string $set = null): string
 }
 
 /**
+ * Decode a response body that arrived compressed.
+ *
+ * Necessary because some origins send gzip whether or not you asked for it.
+ * ece.ncsu.edu, behind Sucuri, returns `content-encoding: gzip` even for a
+ * request that omits Accept-Encoding entirely, while csc.ncsu.edu behind
+ * Cloudflare honours the omission. Any client that cannot decode is then left
+ * scanning binary for HTML, which looks exactly like a page with no content:
+ * that is precisely how this presented, as "0 markers found" in 73,053 bytes
+ * that happened to be the compressed form of a 580,122 byte page.
+ *
+ * cURL with zlib handles this itself and the body arrives already decoded, in
+ * which case the magic-byte check simply does not fire. The stream wrapper
+ * never decodes, so this is its only line of defence.
+ */
+function maybe_gunzip(string $body): string
+{
+    if (strncmp($body, "\x1f\x8b", 2) !== 0) {
+        return $body; // not gzip
+    }
+    if (function_exists('gzdecode')) {
+        $plain = @gzdecode($body);
+        if ($plain !== false && $plain !== '') {
+            return $plain;
+        }
+    }
+    if (function_exists('gzinflate')) {
+        $plain = @gzinflate(substr($body, 10, -8));
+        if ($plain !== false && $plain !== '') {
+            return $plain;
+        }
+    }
+
+    return $body; // zlib unavailable; caller will see it made no sense
+}
+
+/**
  * Fetch a URL. Uses cURL when present, falls back to the stream wrapper.
  * Returns the body string, or null on any failure.
  */
@@ -108,18 +144,24 @@ function http_get(string $url, int $timeout, string $accept = 'application/json'
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         curl_close($ch);
 
-        return ($body !== false && $code >= 200 && $code < 300) ? (string) $body : null;
+        return ($body !== false && $code >= 200 && $code < 300)
+            ? maybe_gunzip((string) $body)
+            : null;
     }
 
+    // Ask for uncompressed explicitly. Origins that honour it save us the
+    // decode; the ones that ignore it are handled by maybe_gunzip below.
     $ctx = stream_context_create([
         'http' => [
             'timeout' => $timeout,
-            'header'  => "Accept: " . $accept . "\r\nUser-Agent: " . upstream_user_agent() . "\r\n",
+            'header'  => "Accept: " . $accept . "\r\n"
+                       . "Accept-Encoding: identity\r\n"
+                       . "User-Agent: " . upstream_user_agent() . "\r\n",
         ],
     ]);
     $body = @file_get_contents($url, false, $ctx);
 
-    return $body !== false ? (string) $body : null;
+    return $body !== false ? maybe_gunzip((string) $body) : null;
 }
 
 /** Turn rendered HTML into clean single-line plain text. */

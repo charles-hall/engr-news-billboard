@@ -172,9 +172,18 @@ Read it like this:
 - **`fetched_bytes` is 0, or the error says "Could not load"** - this server
   cannot reach that page. Not a parsing problem. Check outbound access and
   whether a WAF is treating the server differently from a browser.
-- **Bytes came back but `sbi_item` is 0** - that page does not render a Smash
-  Balloon feed. Either `path` points at the wrong page, or the site is serving
-  this server a different variant than it serves a browser, which some WAFs do.
+- **Bytes came back but `sbi_item` is 0** - first compare `fetched_bytes`
+  against the page's real size. If it is roughly a seventh of it, you are
+  looking at a compressed body that was never decoded, and the marker count is
+  zero because the parser is scanning binary. That was a real bug here:
+  ece.ncsu.edu sits behind Sucuri, which returns `content-encoding: gzip` even
+  for a request that omits Accept-Encoding, while csc.ncsu.edu behind Cloudflare
+  honours the omission. So CSC worked and ECE returned "0 markers in 73,053
+  bytes", which was exactly the compressed form of a 580,122 byte page.
+  `http_get()` now decodes on the magic bytes, but if `zlib` is missing from PHP
+  entirely it cannot, and `tools/diagnose.php` reports that. Otherwise: `path`
+  points at the wrong page, or the site serves this server a different variant
+  than it serves a browser.
 - **`sbi_item` is greater than 0 but `posts_parsed` is 0** - the plugin's markup
   has changed. Send the numbers along and the parser can be adjusted.
 
