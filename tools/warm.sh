@@ -24,7 +24,7 @@ BILLBOARD_URL="${BILLBOARD_URL:-https://billboard.engr.it/news-slides}"
 BILLBOARD_URL="${BILLBOARD_URL%/}"
 SITES="${SITES-csc ece mae ne ccee bme cbe mse ise engr}"
 IG_SITES="${IG_SITES-csc ece ccee}"
-DEPARTMENT_EVENT_SITES="${DEPARTMENT_EVENT_SITES-csc}"
+DEPARTMENT_EVENT_SITES="${DEPARTMENT_EVENT_SITES-csc ece}"
 COUNT="${COUNT:-5}"
 
 # Must match cache_dir in config.php. Default is the deployment's own cache/

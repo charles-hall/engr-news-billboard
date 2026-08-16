@@ -266,6 +266,16 @@ return [
             'limit'       => 12,
             'cache_ttl'   => 1800,
         ],
+        'ece' => [
+            'calendar_id' => 'ncsu.edu_kuko2i6srstb0vudka5asiqi1c@group.calendar.google.com',
+            'label'       => 'Electrical and Computer Engineering',
+            'title'       => 'Upcoming Events',
+            'accent'      => '#4156A1', // Bio-Indigo, matching the ECE news slide
+            'timezone'    => 'America/New_York',
+            'days'        => 45,
+            'limit'       => 12,
+            'cache_ttl'   => 1800,
+        ],
     ],
 
     /* ------------------------------------------------------ Instagram slide */

@@ -30,7 +30,7 @@ page backed by a small PHP proxy:
    State's Localist calendar at `calendar.ncsu.edu`.
 4. **Department events** (`department-events.html`) — an agenda from an
    allowlisted public department Google Calendar. Computer Science (`?site=csc`)
-   is the first configured example.
+   and Electrical and Computer Engineering (`?site=ece`) are configured.
 
 Everything is styled to brand.ncsu.edu: Wolfpack Red anchoring every slide's
 top and bottom, Roboto/Roboto Condensed/Roboto Slab (self-hosted, no Google

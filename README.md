@@ -432,16 +432,18 @@ changes were needed in `tools/warm.sh`.
 ## Department events from Google Calendar
 
 `department-events.html` is the department-specific agenda slide. Computer
-Science is the first configured example, using its public Google Calendar:
+Science and Electrical and Computer Engineering are configured from their
+public Google Calendars:
 
 ```
 https://billboard.engr.it/news-slides/department-events.html?site=csc&count=6
+https://billboard.engr.it/news-slides/department-events.html?site=ece&count=6
 ```
 
 Billboard settings: 25 seconds, reload **Yes**. The layout is the same readable
 agenda used by `events.html`, but the department name and its configured accent
-color identify the source. The CSC example uses Innovation Blue, matching the
-CSC news slide.
+color identify the source. CSC uses Innovation Blue and ECE uses Bio-Indigo,
+matching their news slides.
 
 The proxy reads Google's public iCalendar feed, so it needs no API key, OAuth
 client or signed-in account. It expands recurring events within the display
