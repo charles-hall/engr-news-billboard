@@ -20,8 +20,27 @@ return [
      * refuse any host that is not listed here, so the proxy can never be used
      * to fetch arbitrary URLs.
      */
+    /*
+     * accent = eyebrow text and the short bar beneath the top rule, one per
+     * department, drawn from brand.ncsu.edu's expanded (secondary) palette:
+     * Reynolds Red, Pyroman Flame, Hunt Yellow, Genomic Green, Carmichael
+     * Aqua, Innovation Blue and Bio-Indigo, plus a tint or shade from each
+     * color's approved ramp where a base hue was already spoken for.
+     *
+     * Wolfpack Red still opens and closes every slide -- the top rule and
+     * footer never change color -- so brand guidance to keep red predominant
+     * and to "start and end pieces with red" still holds; only the one line
+     * in between varies. The events slides do the same thing per event type,
+     * a few sections down.
+     *
+     * Every accent below was checked against white (the panel background) for
+     * WCAG AA contrast at the eyebrow's size (32px bold, so the 3:1 "large
+     * text" threshold applies, though everything here clears the stricter
+     * 4.5:1). Hunt Yellow's base hex fails outright on white (1.6:1), which is
+     * why ne uses a shade from its ramp instead of the base color.
+     */
     'sites' => [
-        'csc'  => ['host' => 'csc.ncsu.edu',   'label' => 'Computer Science'],
+        'csc'  => ['host' => 'csc.ncsu.edu',   'label' => 'Computer Science', 'accent' => '#427E93'],
 
         /*
          * source: 'auto' (the default) tries the REST API and falls back to RSS.
@@ -34,18 +53,18 @@ return [
          * 'auto' and gets the better path, with RSS still underneath it if the
          * lockdown ever returns.
          */
-        'ece'  => ['host' => 'ece.ncsu.edu',   'label' => 'Electrical and Computer Engineering'],
-        'mae'  => ['host' => 'mae.ncsu.edu',   'label' => 'Mechanical and Aerospace Engineering'],
-        'ne'   => ['host' => 'ne.ncsu.edu',    'label' => 'Nuclear Engineering'],
-        'ccee' => ['host' => 'ccee.ncsu.edu',  'label' => 'Civil, Construction and Environmental Engineering'],
-        'bme'  => ['host' => 'bme.ncsu.edu',   'label' => 'Biomedical Engineering'],
-        'cbe'  => ['host' => 'cbe.ncsu.edu',   'label' => 'Chemical and Biomolecular Engineering'],
-        'mse'  => ['host' => 'mse.ncsu.edu',   'label' => 'Materials Science and Engineering'],
+        'ece'  => ['host' => 'ece.ncsu.edu',   'label' => 'Electrical and Computer Engineering', 'accent' => '#4156A1'],
+        'mae'  => ['host' => 'mae.ncsu.edu',   'label' => 'Mechanical and Aerospace Engineering', 'accent' => '#D14905'],
+        'ne'   => ['host' => 'ne.ncsu.edu',    'label' => 'Nuclear Engineering', 'accent' => '#966D00'],
+        'ccee' => ['host' => 'ccee.ncsu.edu',  'label' => 'Civil, Construction and Environmental Engineering', 'accent' => '#6F7D1C'],
+        'bme'  => ['host' => 'bme.ncsu.edu',   'label' => 'Biomedical Engineering', 'accent' => '#008473'],
+        'cbe'  => ['host' => 'cbe.ncsu.edu',   'label' => 'Chemical and Biomolecular Engineering', 'accent' => '#00716D'],
+        'mse'  => ['host' => 'mse.ncsu.edu',   'label' => 'Materials Science and Engineering', 'accent' => '#5B73BB'],
         // Formally the Edward P. Fitts Department of Industrial and Systems
         // Engineering. Shortened here because the eyebrow sits above the
         // headline and the full name crowds it.
-        'ise'  => ['host' => 'ise.ncsu.edu',   'label' => 'Industrial and Systems Engineering'],
-        'engr' => ['host' => 'engr.ncsu.edu',  'label' => 'College of Engineering'],
+        'ise'  => ['host' => 'ise.ncsu.edu',   'label' => 'Industrial and Systems Engineering', 'accent' => '#C03003'],
+        'engr' => ['host' => 'engr.ncsu.edu',  'label' => 'College of Engineering', 'accent' => '#990000'],
     ],
 
     /** Default department when the URL has no ?site= parameter. */
@@ -201,6 +220,26 @@ return [
 
         /** Seconds to keep the parsed events before refetching. */
         'cache_ttl' => 1800,
+
+        /*
+         * Per-event-type accent, same palette and contrast rules as the
+         * per-department 'accent' colors above: the date chip on events.html
+         * and the eyebrow/bar on events-cycle.html. A type not listed here
+         * (Academic Calendar, High-Impact Experiences, and the like -- mostly
+         * rare, administrative categories) falls back to Wolfpack Red in CSS,
+         * which is also why there is no explicit "default" entry.
+         *
+         * Names must match Localist's filters.event_types[].name exactly.
+         */
+        'type_colors' => [
+            'Community Events'        => '#008473', // Carmichael Aqua
+            'Student Life'             => '#4156A1', // Bio-Indigo
+            'Tours and Open Houses'    => '#427E93', // Innovation Blue
+            'Exhibitions'              => '#D14905', // Pyroman Flame
+            'Lectures and Talks'       => '#990000', // Reynolds Red
+            'Meetings and Conferences' => '#6F7D1C', // Genomic Green
+            'Performances'             => '#966D00', // Hunt Yellow (shade -- see note above)
+        ],
     ],
 
     /* ------------------------------------------------------ Instagram slide */

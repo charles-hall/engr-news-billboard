@@ -37,17 +37,19 @@
 
   // Used only by the browser-side fallback path, so the slide still works if
   // the PHP proxy is unavailable or the files are hosted somewhere static.
+  // accent values mirror config.php's per-department 'accent' entries, kept
+  // in sync by hand since this path never talks to the PHP proxy.
   var DIRECT_HOSTS = {
-    csc:  { host: 'csc.ncsu.edu',   label: 'Computer Science' },
-    ece:  { host: 'ece.ncsu.edu',   label: 'Electrical and Computer Engineering' },
-    mae:  { host: 'mae.ncsu.edu',   label: 'Mechanical and Aerospace Engineering' },
-    ne:   { host: 'ne.ncsu.edu',    label: 'Nuclear Engineering' },
-    ccee: { host: 'ccee.ncsu.edu',  label: 'Civil, Construction and Environmental Engineering' },
-    bme:  { host: 'bme.ncsu.edu',   label: 'Biomedical Engineering' },
-    cbe:  { host: 'cbe.ncsu.edu',   label: 'Chemical and Biomolecular Engineering' },
-    mse:  { host: 'mse.ncsu.edu',   label: 'Materials Science and Engineering' },
-    ise:  { host: 'ise.ncsu.edu',   label: 'Industrial and Systems Engineering' },
-    engr: { host: 'engr.ncsu.edu',  label: 'College of Engineering' }
+    csc:  { host: 'csc.ncsu.edu',   label: 'Computer Science', accent: '#427E93' },
+    ece:  { host: 'ece.ncsu.edu',   label: 'Electrical and Computer Engineering', accent: '#4156A1' },
+    mae:  { host: 'mae.ncsu.edu',   label: 'Mechanical and Aerospace Engineering', accent: '#D14905' },
+    ne:   { host: 'ne.ncsu.edu',    label: 'Nuclear Engineering', accent: '#966D00' },
+    ccee: { host: 'ccee.ncsu.edu',  label: 'Civil, Construction and Environmental Engineering', accent: '#6F7D1C' },
+    bme:  { host: 'bme.ncsu.edu',   label: 'Biomedical Engineering', accent: '#008473' },
+    cbe:  { host: 'cbe.ncsu.edu',   label: 'Chemical and Biomolecular Engineering', accent: '#00716D' },
+    mse:  { host: 'mse.ncsu.edu',   label: 'Materials Science and Engineering', accent: '#5B73BB' },
+    ise:  { host: 'ise.ncsu.edu',   label: 'Industrial and Systems Engineering', accent: '#C03003' },
+    engr: { host: 'engr.ncsu.edu',  label: 'College of Engineering', accent: '#990000' }
   };
 
   // AP style: abbreviate months of six or more letters when used with a date.
@@ -185,7 +187,8 @@
         key: CONFIG.site,
         host: entry.host,
         name: entry.label,
-        url: 'https://' + entry.host
+        url: 'https://' + entry.host,
+        accent: entry.accent || null
       },
       posts: out
     };
@@ -223,9 +226,13 @@
 
   /* -------------------------------------------------------------- building */
 
-  function buildSlide(post, siteName) {
+  function buildSlide(post, siteName, accent) {
     var node = template.content.firstElementChild.cloneNode(true);
     var img = node.querySelector('.media-img');
+
+    // Per-department brand accent (see config.php). Falls back to Wolfpack
+    // Red in CSS when a department has none configured.
+    if (accent) { node.style.setProperty('--dept-accent', accent); }
 
     if (post.image) {
       img.src = post.image;
@@ -264,13 +271,14 @@
   function render(data) {
     var siteName = (data.site && data.site.name) || 'NC State University';
     var host = (data.site && data.site.host) || '';
+    var accent = (data.site && data.site.accent) || '';
 
     deck.innerHTML = '';
     dotsWrap.innerHTML = '';
     slides = [];
 
     data.posts.forEach(function (post, i) {
-      var node = buildSlide(post, siteName);
+      var node = buildSlide(post, siteName, accent);
       deck.appendChild(node);
       slides.push(node);
 

@@ -17,13 +17,43 @@ One billboard URL covers a whole department. Add it once and it keeps itself cur
 ## What it looks like
 
 A 55/45 split: the featured photo fills the left of the canvas, the story sits on a
-white panel at the right under a Wolfpack Red rule. Wolfpack Red bars close the top
-and bottom of the frame, with a progress line and story dots in the footer.
+white panel at the right under a short accent bar. Wolfpack Red bars close the top
+and bottom of the frame, with a progress line and story dots in the footer, so the
+core brand color still opens and closes every slide.
 
 - Headlines: Roboto Condensed Bold, auto-sized from 78px down to fit
 - Abstract: Roboto Regular, 33px, clamped to five lines
 - Date: Roboto Slab, AP style ("Aug. 14, 2026")
 - All three faces are self-hosted, so the slide never waits on an outside CDN
+
+### Department accent colors
+
+The eyebrow and the bar above it are not always red. Each department carries its
+own color from brand.ncsu.edu's expanded palette, set in `config.php`'s `sites`
+array and checked there for WCAG AA contrast on white:
+
+| Department | Color | Hex |
+| --- | --- | --- |
+| Computer Science | Innovation Blue | `#427E93` |
+| Electrical and Computer Engineering | Bio-Indigo | `#4156A1` |
+| Mechanical and Aerospace Engineering | Pyroman Flame | `#D14905` |
+| Nuclear Engineering | Hunt Yellow (shade) | `#966D00` |
+| Civil, Construction and Environmental Engineering | Genomic Green | `#6F7D1C` |
+| Biomedical Engineering | Carmichael Aqua | `#008473` |
+| Chemical and Biomolecular Engineering | Carmichael Aqua (shade) | `#00716D` |
+| Materials Science and Engineering | Bio-Indigo (tint) | `#5B73BB` |
+| Industrial and Systems Engineering | Pyroman Flame (shade) | `#C03003` |
+| College of Engineering | Reynolds Red | `#990000` |
+
+Hunt Yellow's base hex fails contrast outright on white, which is why Nuclear
+Engineering uses a shade from its approved ramp instead. `?theme=dark` ignores
+these and keeps the eyebrow white, since several of them do not clear AA on
+black at this size either; the accent bar still varies there since it carries
+no text.
+
+To change a department's color, edit its `accent` in `config.php` and mirror the
+same hex into `DIRECT_HOSTS` in `assets/slide.js` (used only by the no-PHP
+fallback path).
 
 ---
 
@@ -267,8 +297,8 @@ from "Congrats to #NCStateCS student ..." breaks the sentence. Set
 
 ## The events slide
 
-Upcoming events on Centennial Campus, as an agenda: a Wolfpack Red date chip,
-the event, the time and the venue.
+Upcoming events on Centennial Campus, as an agenda: a date chip, the event, the
+time and the venue.
 
 ```
 https://billboard.engr.it/news-slides/events.html?count=6
@@ -315,6 +345,28 @@ that array to let them back in.
 Recurring series are collapsed to one entry each, and the instance shown is the
 next one that has not finished, not the first one the API lists, which for a
 weekly series is usually in the past.
+
+### Event-type accent colors
+
+Like the news slide's per-department colors, the date chip here (and the
+eyebrow/bar on the cycling variant below) varies by Localist event type,
+drawn from `config.php`'s `events.type_colors`:
+
+| Event type | Color | Hex |
+| --- | --- | --- |
+| Community Events | Carmichael Aqua | `#008473` |
+| Student Life | Bio-Indigo | `#4156A1` |
+| Tours and Open Houses | Innovation Blue | `#427E93` |
+| Exhibitions | Pyroman Flame | `#D14905` |
+| Lectures and Talks | Reynolds Red | `#990000` |
+| Meetings and Conferences | Genomic Green | `#6F7D1C` |
+| Performances | Hunt Yellow (shade) | `#966D00` |
+
+A type not listed (Academic Calendar, High-Impact Experiences, and other rare,
+mostly administrative categories) falls back to Wolfpack Red, same as an event
+whose type is missing entirely. `api/events.php` resolves the color server
+side and returns it as `typeColor`, so both events slides read one source of
+truth.
 
 ### Events URL parameters
 
@@ -528,10 +580,11 @@ happy path.
 - Spaces around em and en dashes in excerpt text are closed to match College of
   Engineering house style. This is typographic only, the wording is untouched. Set
   `tighten_dashes` to `false` in `config.php` to reproduce site copy verbatim.
-- Colors are Wolfpack Red `#CC0000`, Wolfpack Black and Wolfpack White, with brand
-  grays for secondary text. Body text on white clears WCAG AA.
-- The dark theme uses white for the department eyebrow rather than Wolfpack Red,
-  which does not clear AA contrast on black at that size.
+- Core colors are Wolfpack Red `#CC0000`, Wolfpack Black and Wolfpack White, with
+  brand grays for secondary text; body text on white clears WCAG AA. The eyebrow
+  and accent bar vary per department -- see "Department accent colors" above.
+- The dark theme uses white for the eyebrow regardless of department, since
+  several accent colors do not clear AA contrast on black at that size.
 - Featured image alt text from WordPress is carried through to the `img` element.
 
 ---

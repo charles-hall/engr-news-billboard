@@ -27,19 +27,31 @@
   --headline-color: var(--black);
   --body-color: var(--gray-90);
   --meta-color: var(--gray-70);
-  --eyebrow-color: var(--wolfpack-red);
   --panel-bg: var(--white);
 }
 
-/* Dark variant: ?theme=dark. Eyebrow goes white because Wolfpack Red on black
-   does not clear WCAG AA for text at this size. */
+/*
+ * --dept-accent is set per slide (not per stage) by slide.js /
+ * events-cycle.js from config.php's per-department or per-event-type accent,
+ * e.g. .slide { --dept-accent: #427E93 }. .eyebrow and .accent below read it
+ * directly rather than through an intermediate variable: a custom property
+ * inherits its *computed* value, so if .eyebrow's color instead read a
+ * --eyebrow-color defined up at :root, the var(--dept-accent) inside it would
+ * have already been resolved (to nothing, since :root has no --dept-accent)
+ * before inheritance ever reached a .slide that sets one.
+ */
+
+/* Dark variant: ?theme=dark. Eyebrow stays white regardless of --dept-accent,
+   because several palette colors do not clear WCAG AA on black at this size
+   (see the contrast note in config.php). The accent bar still varies -- it is
+   decorative, not text, so contrast against the black media panel does not
+   apply the same way. */
 .stage.theme-dark {
   --bg: var(--black);
   --panel-bg: var(--black);
   --headline-color: var(--white);
   --body-color: var(--gray-20);
   --meta-color: var(--gray-20);
-  --eyebrow-color: var(--white);
 }
 
 * { box-sizing: border-box; }
@@ -187,7 +199,7 @@ html, body {
   display: block;
   width: 132px;
   height: 10px;
-  background: var(--wolfpack-red);
+  background: var(--dept-accent, var(--wolfpack-red));
   margin-bottom: 26px;
 }
 
@@ -198,8 +210,10 @@ html, body {
   font-size: 32px;
   line-height: 1.2;
   letter-spacing: 0.01em;
-  color: var(--eyebrow-color);
+  color: var(--dept-accent, var(--wolfpack-red));
 }
+
+.stage.theme-dark .eyebrow { color: var(--white); }
 
 .headline {
   margin: 0 0 24px;

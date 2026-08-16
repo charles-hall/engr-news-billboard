@@ -9,13 +9,18 @@
  * {
  *   "window": { "days": 21, "from": "...", "to": "..." },
  *   "events": [ { "id","title","url","startISO","endISO","allDay","venue","room",
- *                 "type","image","excerpt" } ]
+ *                 "type","typeColor","image","excerpt" } ]
  * }
  *
  * image and excerpt (Localist's photo_url and description_text) feed the
  * cycling variant of this slide, events-cycle.html, which mirrors the
  * one-story-at-a-time layout of the news slide. The agenda slide (events.html)
  * ignores both fields.
+ *
+ * typeColor is looked up from config.php's events.type_colors by event type
+ * name and used by both slides for a bit of brand-palette variety: the date
+ * chip on events.html, the eyebrow/bar on events-cycle.html. null when the
+ * type has no configured color, which both slides treat as Wolfpack Red.
  *
  * The calendar runs Localist, whose public API needs no key or account.
  *
@@ -242,25 +247,29 @@ foreach ($data['events'] as $wrapper) {
     $excerpt = plain_text((string) ($e['description_text'] ?? ''), $tighten);
     $excerpt = trim_words($excerpt, (int) ($config['excerpt_max'] ?? 260));
 
+    $type = (string) ((($e['filters'] ?? [])['event_types'][0] ?? [])['name'] ?? '');
+    $typeColors = $ev['type_colors'] ?? [];
+
     $out[] = [
-        'id'       => (int) ($e['id'] ?? 0),
-        'title'    => $title,
-        'url'      => (string) ($e['localist_url'] ?? ''),
-        'startISO' => (string) $instance['start'],
-        'endISO'   => (string) ($instance['end'] ?? $instance['start']),
-        'allDay'   => (bool) ($instance['all_day'] ?? false),
+        'id'        => (int) ($e['id'] ?? 0),
+        'title'     => $title,
+        'url'       => (string) ($e['localist_url'] ?? ''),
+        'startISO'  => (string) $instance['start'],
+        'endISO'    => (string) ($instance['end'] ?? $instance['start']),
+        'allDay'    => (bool) ($instance['all_day'] ?? false),
         // Venue names are proper names, so the dash-tightening house rule does
         // not apply: "Partners I – NC State University" should not become
         // "Partners I–NC State University".
-        'venue'    => plain_text((string) ($e['location_name'] ?? ''), false),
-        'room'     => plain_text((string) ($e['room_number'] ?? ''), false),
-        'type'     => (string) ((($e['filters'] ?? [])['event_types'][0] ?? [])['name'] ?? ''),
+        'venue'     => plain_text((string) ($e['location_name'] ?? ''), false),
+        'room'      => plain_text((string) ($e['room_number'] ?? ''), false),
+        'type'      => $type,
+        'typeColor' => $typeColors[$type] ?? null,
         // Localist's "huge" size is a large fixed-width JPEG served from a
         // stable, unsigned CDN path (localist-images.azureedge.net) -- unlike
         // Instagram's signed URLs, these do not expire, so no mirroring is
         // needed here the way api/image.php mirrors Instagram photos.
-        'image'    => (string) ($e['photo_url'] ?? ''),
-        'excerpt'  => $excerpt,
+        'image'     => (string) ($e['photo_url'] ?? ''),
+        'excerpt'   => $excerpt,
     ];
 }
 

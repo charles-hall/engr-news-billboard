@@ -6,7 +6,7 @@
  *
  * Returns normalized JSON:
  * {
- *   "site":      { "key", "host", "name", "url" },
+ *   "site":      { "key", "host", "name", "url", "accent" },
  *   "generated": "2026-08-15T09:12:44-04:00",
  *   "cached":    true,
  *   "stale":     false,
@@ -409,10 +409,13 @@ if ($siteName === null || $siteName === '') {
 
 $payload = [
     'site' => [
-        'key'  => $siteKey,
-        'host' => $host,
-        'name' => $siteName,
-        'url'  => $base,
+        'key'    => $siteKey,
+        'host'   => $host,
+        'name'   => $siteName,
+        'url'    => $base,
+        // Falls through to null when a department has no accent configured;
+        // slide.js then leaves the CSS default (Wolfpack Red) in place.
+        'accent' => $site['accent'] ?? null,
     ],
     'generated' => date('c'),
     'source'    => $source,

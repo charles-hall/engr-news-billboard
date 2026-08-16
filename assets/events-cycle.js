@@ -176,6 +176,12 @@
     var node = template.content.firstElementChild.cloneNode(true);
     var img = node.querySelector('.media-img');
 
+    // Per-event-type brand accent from config.php (events.type_colors),
+    // resolved server-side into ev.typeColor. Same --dept-accent variable
+    // slide.css already uses for the news slide's per-department color;
+    // falls back to Wolfpack Red in CSS when the type has none configured.
+    if (ev.typeColor) { node.style.setProperty('--dept-accent', ev.typeColor); }
+
     if (ev.image) {
       img.src = ev.image;
       img.alt = '';

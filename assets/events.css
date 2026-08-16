@@ -110,7 +110,10 @@
 .ev-chip {
   width: 118px;
   height: 96px;
-  background: var(--wolfpack-red);
+  /* Set per row by events.js from config.php's events.type_colors, e.g.
+     .ev-chip { --type-accent: #008473 }. Falls back to Wolfpack Red for
+     event types with no configured color. */
+  background: var(--type-accent, var(--wolfpack-red));
   color: var(--white);
   display: flex;
   flex-direction: column;
