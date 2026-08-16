@@ -15,6 +15,7 @@
      refresh=900         seconds between feed refreshes
      kenburns=0          disable the slow photo push
      eyebrow=...          override the small line above the headline
+                          (defaults to the event's type, else the campus line)
 
    Example:
      events-cycle.html?count=5&dwell=12
@@ -193,7 +194,12 @@
       node.classList.add('no-image');
     }
 
-    node.querySelector('.eyebrow').textContent  = CONFIG.eyebrow || 'Upcoming on Centennial Campus';
+    // The eyebrow names the event type when Localist reports one, so the
+    // accent color above it reads as a labeled system rather than random
+    // variety. A ?eyebrow= override always wins; the campus line is the
+    // fallback for untyped events.
+    node.querySelector('.eyebrow').textContent =
+      CONFIG.eyebrow || ev.type || 'Upcoming on Centennial Campus';
     node.querySelector('.headline').textContent = ev.title;
     node.querySelector('.date').textContent     = whenWhere(ev);
     node.querySelector('.abstract').textContent = ev.excerpt || '';

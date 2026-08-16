@@ -143,14 +143,27 @@ html, body {
   .slide { transition: none; }
 }
 
-/* Shown only when a post has no featured image. */
+/* A whisper of shadow along the photo's bottom edge gives every image a
+   finished base, whatever its content. Decorative only, so it sits under
+   no text and affects no contrast requirement. */
+.media::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 180px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent);
+  pointer-events: none;
+}
+
+/* Shown only when a post has no featured image. The two brand reds in a
+   soft diagonal read as intentional art rather than a missing photo. */
 .media-fallback {
   position: absolute;
   inset: 0;
   display: none;
   align-items: center;
   justify-content: center;
-  background: var(--wolfpack-red);
+  background: linear-gradient(135deg, var(--wolfpack-red) 0%, var(--wolfpack-red) 55%, var(--reynolds-red) 100%);
 }
 
 .media-fallback span {
@@ -177,39 +190,75 @@ html, body {
 
 /* The two panels are the same opaque color, so a plain cross-dissolve would
    show both headlines stacked on top of each other for most of a second.
-   Instead the text fades out, the photos dissolve, then the new text fades in. */
+   Instead the outgoing text fades quickly, the photos dissolve, then the new
+   text arrives line by line: accent bar first, then eyebrow, headline, date
+   and abstract, each rising into place a beat after the one before. The
+   stagger is what makes the change of story feel composed rather than
+   swapped. */
 .panel-inner {
   width: 100%;
   min-width: 0;
-  opacity: 0;
-  transition: opacity 320ms ease-in;
 }
 
-.slide.is-active .panel-inner {
-  opacity: 1;
-  transition: opacity 380ms ease-out 380ms;
+.panel-inner > * {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 260ms ease-in, transform 260ms ease-in;
 }
+
+.slide.is-active .panel-inner > * {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 420ms ease-out, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slide.is-active .panel-inner > :nth-child(1) { transition-delay: 380ms; }
+.slide.is-active .panel-inner > :nth-child(2) { transition-delay: 460ms; }
+.slide.is-active .panel-inner > :nth-child(3) { transition-delay: 540ms; }
+.slide.is-active .panel-inner > :nth-child(4) { transition-delay: 620ms; }
+.slide.is-active .panel-inner > :nth-child(5) { transition-delay: 700ms; }
 
 @media (prefers-reduced-motion: reduce) {
-  .panel-inner,
-  .slide.is-active .panel-inner { transition: none; }
+  .panel-inner > *,
+  .slide.is-active .panel-inner > * {
+    transition: opacity 300ms ease;
+    transform: none;
+  }
 }
 
+/* The accent bar draws itself in left to right once its slide is up. */
 .accent {
   display: block;
   width: 132px;
   height: 10px;
   background: var(--dept-accent, var(--wolfpack-red));
   margin-bottom: 26px;
+  transform-origin: left center;
 }
 
+.slide.is-active .accent {
+  animation: accent-draw 520ms cubic-bezier(0.22, 1, 0.36, 1) 380ms backwards;
+}
+
+@keyframes accent-draw {
+  from { scale: 0 1; }
+  to   { scale: 1 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide.is-active .accent { animation: none; }
+}
+
+/* Uppercase here is a label treatment, not body copy: ncsu.edu uses the same
+   Roboto Condensed uppercase for its section labels. */
 .eyebrow {
   margin: 0 0 20px;
   font-family: "Roboto Condensed", Arial, sans-serif;
   font-weight: 700;
-  font-size: 32px;
+  font-size: 28px;
   line-height: 1.2;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--dept-accent, var(--wolfpack-red));
 }
 
@@ -302,11 +351,21 @@ html, body {
 .dot {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.42);
+  transition: width 360ms cubic-bezier(0.22, 1, 0.36, 1), background 360ms ease;
 }
 
-.dot.is-active { background: var(--white); }
+/* The active dot stretches into a short bar: easier to spot from across a
+   lobby than a brightness change alone. */
+.dot.is-active {
+  width: 44px;
+  background: var(--white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot { transition: none; }
+}
 
 /* ---------------------------------------------------------- status screen */
 

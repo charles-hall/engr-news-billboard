@@ -158,9 +158,11 @@
       var row = template.content.firstElementChild.cloneNode(true);
       var key = p.year + '-' + p.month + '-' + p.day;
 
-      // Per-event-type brand accent (config.php's events.type_colors).
-      // Falls back to Wolfpack Red in CSS when the type has none configured.
-      if (ev.typeColor) { row.querySelector('.ev-chip').style.setProperty('--type-accent', ev.typeColor); }
+      // Per-event-type brand accent (config.php's events.type_colors), set on
+      // the row so both the date chip and the type label inherit it. Falls
+      // back to Wolfpack Red in CSS when the type has none configured.
+      if (ev.typeColor) { row.style.setProperty('--type-accent', ev.typeColor); }
+      row.querySelector('.ev-type').textContent = ev.type || '';
 
       if (key === lastDate) {
         row.classList.add('same-day');

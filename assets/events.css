@@ -28,12 +28,15 @@
   flex: 0 0 auto;
 }
 
+/* Uppercase as a label treatment, matching the news slide's eyebrow. */
 .ev-eyebrow {
   margin: 0 0 8px;
   font-family: "Roboto Condensed", Arial, sans-serif;
   font-weight: 700;
-  font-size: 30px;
+  font-size: 26px;
   line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--wolfpack-red);
 }
 
@@ -77,7 +80,7 @@
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-columns: 118px 1fr;
+  grid-template-columns: 118px 1fr max-content;
   gap: 30px;
   align-items: center;
   border-bottom: 2px solid var(--gray-20);
@@ -175,6 +178,23 @@
 }
 
 .ev-meta .ev-sep { color: var(--gray-20); padding: 0 10px; }
+
+/*
+ * Event type, set in the type's accent color so the colored date chips read
+ * as a system rather than decoration. Hidden (by events.js leaving it empty)
+ * when Localist reports no type for an event.
+ */
+.ev-type {
+  margin: 0;
+  font-family: "Roboto Condensed", Arial, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--type-accent, var(--wolfpack-red));
+}
 
 /* --------------------------------------------------------- status screen */
 

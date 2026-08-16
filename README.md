@@ -24,7 +24,14 @@ core brand color still opens and closes every slide.
 - Headlines: Roboto Condensed Bold, auto-sized from 78px down to fit
 - Abstract: Roboto Regular, 33px, clamped to five lines
 - Date: Roboto Slab, AP style ("Aug. 14, 2026")
+- Eyebrow: uppercase Roboto Condensed with wide tracking, a label treatment
+  matching ncsu.edu's own section labels
 - All three faces are self-hosted, so the slide never waits on an outside CDN
+
+When a story arrives, the accent bar draws itself in and each text line rises
+into place a beat after the one before; the active footer dot stretches into a
+short bar so the current position reads from across a room. All motion honors
+`prefers-reduced-motion`, falling back to simple fades.
 
 ### Department accent colors
 
@@ -298,7 +305,8 @@ from "Congrats to #NCStateCS student ..." breaks the sentence. Set
 ## The events slide
 
 Upcoming events on Centennial Campus, as an agenda: a date chip, the event, the
-time and the venue.
+time and the venue, with the event type set at the row's right edge in that
+type's accent color so the colored chips read as a labeled system.
 
 ```
 https://billboard.engr.it/news-slides/events.html?count=6
@@ -417,7 +425,7 @@ changes were needed in `tools/warm.sh`.
 | `refresh` | `900` | Seconds between feed refreshes |
 | `theme` | `light` | `dark` for a black panel and white text |
 | `kenburns` | on | Set to `0` to disable the slow photo push |
-| `eyebrow` | `Upcoming on Centennial Campus` | Override the small line above the headline |
+| `eyebrow` | the event's type | Override the small line above the headline. Defaults to the event's type (colored to match), falling back to "Upcoming on Centennial Campus" for untyped events |
 
 ---
 
