@@ -8,8 +8,14 @@
  *
  * {
  *   "window": { "days": 21, "from": "...", "to": "..." },
- *   "events": [ { "id","title","url","startISO","allDay","venue","room","type" } ]
+ *   "events": [ { "id","title","url","startISO","endISO","allDay","venue","room",
+ *                 "type","image","excerpt" } ]
  * }
+ *
+ * image and excerpt (Localist's photo_url and description_text) feed the
+ * cycling variant of this slide, events-cycle.html, which mirrors the
+ * one-story-at-a-time layout of the news slide. The agenda slide (events.html)
+ * ignores both fields.
  *
  * The calendar runs Localist, whose public API needs no key or account.
  *
@@ -228,6 +234,14 @@ foreach ($data['events'] as $wrapper) {
         continue;
     }
 
+    $tighten = (bool) ($config['tighten_dashes'] ?? true);
+
+    // description_text arrives pre-stripped of markup, but still runs through
+    // plain_text() for entity decoding, whitespace collapse and the same
+    // dash-tightening house rule applied to news excerpts.
+    $excerpt = plain_text((string) ($e['description_text'] ?? ''), $tighten);
+    $excerpt = trim_words($excerpt, (int) ($config['excerpt_max'] ?? 260));
+
     $out[] = [
         'id'       => (int) ($e['id'] ?? 0),
         'title'    => $title,
@@ -241,6 +255,12 @@ foreach ($data['events'] as $wrapper) {
         'venue'    => plain_text((string) ($e['location_name'] ?? ''), false),
         'room'     => plain_text((string) ($e['room_number'] ?? ''), false),
         'type'     => (string) ((($e['filters'] ?? [])['event_types'][0] ?? [])['name'] ?? ''),
+        // Localist's "huge" size is a large fixed-width JPEG served from a
+        // stable, unsigned CDN path (localist-images.azureedge.net) -- unlike
+        // Instagram's signed URLs, these do not expire, so no mirroring is
+        // needed here the way api/image.php mirrors Instagram photos.
+        'image'    => (string) ($e['photo_url'] ?? ''),
+        'excerpt'  => $excerpt,
     ];
 }
 

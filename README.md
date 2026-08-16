@@ -330,6 +330,43 @@ Times follow AP style: lowercase with periods, no `:00` on the hour, and the
 words noon and midnight rather than 12 p.m. and 12 a.m. Events today and
 tomorrow say so.
 
+### The cycling variant: events-cycle.html
+
+A second version of the events slide for when a photo carries more weight than
+a list. It shows one event at a time with its featured image and description,
+using the same split media/panel layout, crossfade, Ken Burns push, progress
+bar and dot indicators as the news slide (`index.html`).
+
+```
+https://billboard.engr.it/news-slides/events-cycle.html?count=5&dwell=12
+```
+
+Billboard settings: reload **Yes**, duration long enough to cover a full pass
+(`count × dwell`, so 60 seconds for the defaults above).
+
+It reads the same `api/events.php` proxy as the agenda version, just with two
+more fields per event: `image` (Localist's `photo_url`) and `excerpt`
+(`description_text`, trimmed to `excerpt_max` characters the same way news
+abstracts are). Unlike Instagram photos, Localist's image URLs are not signed
+and do not expire (`localist-images.azureedge.net/photos/...`), so they are
+linked directly rather than mirrored through `api/image.php`. An event whose
+photo fails to load falls back to a plain Wolfpack Red panel, same as a
+newsless post on the news slide.
+
+Because both events slides share one cache (keyed on the host and day window,
+not on count or which fields are used), warming one warms the other — no
+changes were needed in `tools/warm.sh`.
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `count` | `5` | Events to cycle through, 1 to 8 |
+| `dwell` | `12` | Seconds each event stays on screen |
+| `days` | `21` | How far ahead to look, overriding `config.php` |
+| `refresh` | `900` | Seconds between feed refreshes |
+| `theme` | `light` | `dark` for a black panel and white text |
+| `kenburns` | on | Set to `0` to disable the slow photo push |
+| `eyebrow` | `Upcoming on Centennial Campus` | Override the small line above the headline |
+
 ---
 
 ## Keeping the caches warm
@@ -592,13 +629,15 @@ featured image URL is returning an error. Check it directly.
 ```
 index.html             the news slide
 instagram.html         the Instagram slide
-events.html            the events slide
+events.html            the events slide (agenda list)
+events-cycle.html      the events slide (cycling photo variant)
 assets/slide.css       layout and brand styling, shared stage
 assets/slide.js        news fetch, rotation, scaling, AP dates
 assets/instagram.css   Instagram grid styling
 assets/instagram.js    Instagram fetch and rendering
 assets/events.css      agenda styling
-assets/events.js       events fetch, AP dates and times
+assets/events.js       events fetch, AP dates and times (agenda list)
+assets/events-cycle.js events fetch, rotation, AP dates (cycling variant; reuses slide.css)
 assets/fonts.css       self-hosted Roboto family
 assets/fonts/          woff2 files (SIL Open Font License 1.1)
 api/lib.php            shared helpers: fetch, cache, text cleanup
