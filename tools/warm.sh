@@ -67,6 +67,11 @@ for site in $IG_SITES; do
     warm_one "instagram:$site" "$BILLBOARD_URL/api/instagram.php?site=$site&refresh=1"
 done
 
+# Set WARM_EVENTS=0 to skip.
+if [ "${WARM_EVENTS:-1}" = "1" ]; then
+    warm_one "events" "$BILLBOARD_URL/api/events.php?refresh=1"
+fi
+
 {
     echo "started   $started"
     echo "finished  $(date '+%Y-%m-%d %H:%M:%S %Z')"

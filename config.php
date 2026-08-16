@@ -155,6 +155,54 @@ return [
      */
     'tighten_dashes' => true,
 
+    /* --------------------------------------------------------- Events slide */
+
+    /**
+     * Upcoming events, read from the university calendar at calendar.ncsu.edu.
+     *
+     * That calendar runs Localist, whose public API needs no key.
+     */
+    'events' => [
+        'host' => 'calendar.ncsu.edu',
+
+        /** Days ahead to look. */
+        'days' => 21,
+
+        /** Events to keep. The slide shows fewer; the rest are headroom. */
+        'limit' => 12,
+
+        /**
+         * Which campus, defined as a bounding box.
+         *
+         * The calendar has no campus field: campus_id is null on every event,
+         * and there is no campus filter set. Venue coordinates are populated on
+         * 48 of 50 events sampled, so a box is the reliable way to do this.
+         *
+         * Calibrated from real venue coordinates rather than a map. Centennial
+         * venues sit between 35.7693 (Hunt Library) and 35.7734 (Venture III);
+         * the nearest main-campus venues start at 35.7839 (Carmichael) and
+         * 35.7841 (Talley). The box below clears both by a wide margin, and its
+         * western edge excludes the Centennial Biomedical Campus over on Blue
+         * Ridge Road, which is a different place despite the name.
+         */
+        'bounds' => [
+            'south' => 35.7580,
+            'north' => 35.7800,
+            'west'  => -78.6900,
+            'east'  => -78.6650,
+        ],
+
+        /**
+         * Event types to leave off the wall, by Localist type name.
+         * Workshops and information sessions are numerous and read as internal
+         * business rather than something a passer-by would act on.
+         */
+        'exclude_types' => ['Workshops and Training', 'Information Session'],
+
+        /** Seconds to keep the parsed events before refetching. */
+        'cache_ttl' => 1800,
+    ],
+
     /* ------------------------------------------------------ Instagram slide */
 
     /**

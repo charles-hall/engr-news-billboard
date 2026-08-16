@@ -265,6 +265,73 @@ from "Congrats to #NCStateCS student ..." breaks the sentence. Set
 
 ---
 
+## The events slide
+
+Upcoming events on Centennial Campus, as an agenda: a Wolfpack Red date chip,
+the event, the time and the venue.
+
+```
+https://billboard.engr.it/news-slides/events.html?count=6
+```
+
+Billboard settings: 25 seconds, reload **Yes**. Nothing cycles, so the duration
+is just how long you want it up.
+
+### Defining "Centennial Campus"
+
+The calendar has no campus to filter on. `campus_id` is null on every event and
+there is no campus filter set to query, so the campus is a bounding box of venue
+coordinates, set in `config.php`.
+
+The box was calibrated from real venue coordinates rather than a map:
+
+| | Latitude |
+| --- | --- |
+| Hunt Library | 35.7693 |
+| Monteith Engineering Research Center | 35.7694 |
+| Wilson College of Textiles | 35.7700 |
+| The Oval | 35.7706 |
+| Partners I | 35.7711 |
+| Venture Place | 35.7723 |
+| Venture III | 35.7734 |
+| *Carmichael Gym (main campus)* | *35.7839* |
+| *Talley Student Union (main campus)* | *35.7841* |
+
+The two campuses separate with about a thousand feet to spare, so the box
+(35.758 to 35.780) is in no danger of catching main campus. Its western edge
+also excludes the Centennial Biomedical Campus over on Blue Ridge Road, which is
+a different place despite the name.
+
+Venue coordinates are populated on 48 of 50 events sampled. The handful without
+them are dropped rather than guessed at.
+
+### What gets filtered out
+
+`exclude_types` in `config.php` drops Workshops and Training plus Information
+Sessions. The Graduate School posts a lot of those and they read as internal
+business rather than something a passer-by would act on. Remove entries from
+that array to let them back in.
+
+Recurring series are collapsed to one entry each, and the instance shown is the
+next one that has not finished, not the first one the API lists, which for a
+weekly series is usually in the past.
+
+### Events URL parameters
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `count` | `6` | Events to show, 1 to 8. Rows divide the canvas, so any count fills it |
+| `days` | `21` | How far ahead to look, overriding `config.php` |
+| `refresh` | `900` | Seconds between refreshes |
+| `title` | none | Override the headline |
+| `eyebrow` | none | Override the small line above it |
+
+Times follow AP style: lowercase with periods, no `:00` on the hour, and the
+words noon and midnight rather than 12 p.m. and 12 a.m. Events today and
+tomorrow say so.
+
+---
+
 ## Keeping the caches warm
 
 Worth doing, and it takes two minutes.
@@ -525,15 +592,19 @@ featured image URL is returning an error. Check it directly.
 ```
 index.html             the news slide
 instagram.html         the Instagram slide
+events.html            the events slide
 assets/slide.css       layout and brand styling, shared stage
 assets/slide.js        news fetch, rotation, scaling, AP dates
 assets/instagram.css   Instagram grid styling
 assets/instagram.js    Instagram fetch and rendering
+assets/events.css      agenda styling
+assets/events.js       events fetch, AP dates and times
 assets/fonts.css       self-hosted Roboto family
 assets/fonts/          woff2 files (SIL Open Font License 1.1)
 api/lib.php            shared helpers: fetch, cache, text cleanup
 api/feed.php           cached WordPress REST proxy with RSS fallback
 api/instagram.php      Instagram proxy, reads Smash Balloon, mirrors images
+api/events.php         events proxy, reads calendar.ncsu.edu and geofences
 api/image.php          serves mirrored Instagram images
 config.php             department allowlist and defaults
 tools/warm.sh          scheduled cache warm-up, see above

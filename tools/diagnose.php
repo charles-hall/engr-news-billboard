@@ -276,6 +276,37 @@ $cacheOnly = isset($_GET['cache']);
 <?php endforeach; ?>
 </table>
 
+<h2>Events</h2>
+<?php
+  $evCfg   = $config['events'] ?? [];
+  $evGlob  = glob(rtrim($cacheDir, '/') . '/events-*.json') ?: [];
+  $evAge   = $evGlob !== [] ? time() - (int) filemtime($evGlob[0]) : null;
+  $evCount = 0;
+  $evFirst = '';
+  if ($evGlob !== []) {
+      $evData = json_decode((string) file_get_contents($evGlob[0]), true);
+      if (is_array($evData)) {
+          $evCount = count($evData['events'] ?? []);
+          $evFirst = (string) (($evData['events'][0] ?? [])['title'] ?? '');
+      }
+  }
+?>
+<table>
+  <tr><th>Source</th><th>Window</th><th>Cache</th><th>Events kept</th><th>Next up</th></tr>
+  <tr>
+    <td><?= htmlspecialchars((string) ($evCfg['host'] ?? 'calendar.ncsu.edu')) ?></td>
+    <td><?= (int) ($evCfg['days'] ?? 21) ?> days</td>
+    <td class="<?= $evAge === null ? 'bad' : ($evAge < (int) ($evCfg['cache_ttl'] ?? 1800) * 2 ? 'ok' : 'bad') ?>">
+      <?= $evAge === null ? 'none yet' : number_format($evAge) . 's old' ?>
+    </td>
+    <td class="<?= $evCount > 0 ? 'ok' : 'bad' ?>">
+      <?= (int) $evCount ?>
+      <span class="ms">inside the Centennial bounds</span>
+    </td>
+    <td><?= htmlspecialchars(mb_substr($evFirst, 0, 46)) ?></td>
+  </tr>
+</table>
+
 <div class="note">
   <strong>Reading this.</strong> A failed REST cell is expected where the site is
   pinned to <code>rss</code>. A cell over eight seconds means that department's
