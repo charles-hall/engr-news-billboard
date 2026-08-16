@@ -6,6 +6,7 @@
    only those whose venue falls inside the campus bounding box in config.php.
 
    URL parameters (all optional):
+     site=csc        department key when used by department-events.html
      count=6         events to show, 1-8
      days=21         how far ahead to look, overrides config.php
      refresh=900     seconds between refreshes
@@ -22,6 +23,7 @@
   var params = new URLSearchParams(window.location.search);
 
   var CONFIG = {
+    site:    params.get('site') || 'csc',
     count:   clamp(parseInt(params.get('count'), 10) || 6, 1, 8),
     days:    parseInt(params.get('days'), 10) || 0,
     refresh: clamp(parseInt(params.get('refresh'), 10) || 900, 120, 86400),
@@ -42,6 +44,8 @@
   var windowEl = document.getElementById('evWindow');
   var countEl  = document.getElementById('evCount');
   var template = document.getElementById('evRowTemplate');
+  var sourceEl = document.getElementById('evSource');
+  var endpoint = stage.getAttribute('data-events-endpoint') || 'api/events.php';
 
   var statusEl = null;
 
@@ -124,7 +128,11 @@
     if (CONFIG.days) { q.set('days', String(CONFIG.days)); }
     q.set('_', String(Math.floor(Date.now() / 60000))); // 60s cache buster
 
-    return fetch('api/events.php?' + q.toString(), { cache: 'no-store' })
+    if (endpoint.indexOf('department-events.php') !== -1) {
+      q.set('site', CONFIG.site);
+    }
+
+    return fetch(endpoint + '?' + q.toString(), { cache: 'no-store' })
       .then(function (r) {
         if (!r.ok) {
           return r.json().catch(function () { return {}; }).then(function (body) {
@@ -134,19 +142,36 @@
         return r.json();
       })
       .then(function (data) {
-        if (!data || !data.events || !data.events.length) { throw new Error('no events returned'); }
+        if (!data || !Array.isArray(data.events)) { throw new Error('no events returned'); }
         return data;
       });
   }
 
   function render(data) {
-    if (CONFIG.eyebrow) { eyebrow.textContent = CONFIG.eyebrow; }
-    if (CONFIG.title) { titleEl.textContent = CONFIG.title; }
+    var source = data.source || {};
+    eyebrow.textContent = CONFIG.eyebrow || source.name || eyebrow.textContent;
+    titleEl.textContent = CONFIG.title || source.title || titleEl.textContent;
+
+    if (source.accent) {
+      stage.style.setProperty('--department-accent', source.accent);
+    }
+    if (sourceEl && endpoint.indexOf('department-events.php') !== -1) {
+      sourceEl.textContent = 'Events from the ' + (source.name || 'department') + ' calendar';
+    }
 
     var days = (data.window && data.window.days) || CONFIG.days || 21;
     windowEl.textContent = 'Next ' + days + ' days';
 
     list.innerHTML = '';
+
+    if (!data.events.length) {
+      countEl.textContent = '';
+      showStatus(
+        'No upcoming events',
+        'There are no events currently listed in the next ' + days + ' days.'
+      );
+      return;
+    }
 
     var today = parts(new Date().toISOString());
     var lastDate = '';
@@ -226,7 +251,12 @@
     scaleStage();
     window.addEventListener('resize', scaleStage);
 
-    showStatus('Loading events', 'Fetching upcoming events from calendar.ncsu.edu.');
+    showStatus(
+      'Loading events',
+      endpoint.indexOf('department-events.php') !== -1
+        ? 'Fetching the department calendar.'
+        : 'Fetching upcoming events from calendar.ncsu.edu.'
+    );
 
     function attempt() {
       loadEvents()

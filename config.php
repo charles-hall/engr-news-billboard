@@ -242,6 +242,32 @@ return [
         ],
     ],
 
+    /* ------------------------------------------- Department events slides */
+
+    /**
+     * Department-specific public Google Calendars.
+     *
+     * The key is the same department key used by the news slide. Calendar IDs
+     * live here rather than in a URL parameter so api/department-events.php
+     * cannot be turned into an open proxy. Google publishes each calendar as
+     * iCalendar, which needs no API key or account and includes recurring event
+     * rules, cancellations and exception dates.
+     *
+     * Add another department here once its public calendar ID is confirmed.
+     */
+    'department_events' => [
+        'csc' => [
+            'calendar_id' => 'ncsu.edu_hpasl5cmtenq7biv0omve1nvq8@group.calendar.google.com',
+            'label'       => 'NC State Computer Science',
+            'title'       => 'Upcoming Events',
+            'accent'      => '#427E93', // Innovation Blue, matching the CSC news slide
+            'timezone'    => 'America/New_York',
+            'days'        => 45,
+            'limit'       => 12,
+            'cache_ttl'   => 1800,
+        ],
+    ],
+
     /* ------------------------------------------------------ Instagram slide */
 
     /**

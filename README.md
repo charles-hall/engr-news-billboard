@@ -429,6 +429,60 @@ changes were needed in `tools/warm.sh`.
 
 ---
 
+## Department events from Google Calendar
+
+`department-events.html` is the department-specific agenda slide. Computer
+Science is the first configured example, using its public Google Calendar:
+
+```
+https://billboard.engr.it/news-slides/department-events.html?site=csc&count=6
+```
+
+Billboard settings: 25 seconds, reload **Yes**. The layout is the same readable
+agenda used by `events.html`, but the department name and its configured accent
+color identify the source. The CSC example uses Innovation Blue, matching the
+CSC news slide.
+
+The proxy reads Google's public iCalendar feed, so it needs no API key, OAuth
+client or signed-in account. It expands recurring events within the display
+window and honors `EXDATE`, moved occurrences and cancellations. Because the
+calendar feed contains its full history, `tools/warm.sh` refreshes it alongside
+the other feeds and the slide serves stale cached data during an upstream
+failure.
+
+### Department events URL parameters
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `site` | `csc` | Key from `config.php`'s `department_events` array |
+| `count` | `6` | Events to show, 1 to 8 |
+| `days` | department setting | How far ahead to look; CSC defaults to 45 days |
+| `refresh` | `900` | Seconds between display refreshes |
+| `title` | department setting | Override the headline |
+| `eyebrow` | department label | Override the department line |
+
+To add another department, confirm that its Google Calendar is public, then add
+an allowlisted entry to `department_events` in `config.php` and add its key to
+`DEPARTMENT_EVENT_SITES` in `tools/warm.sh`:
+
+```php
+'ece' => [
+    'calendar_id' => 'PUBLIC_CALENDAR_ID@group.calendar.google.com',
+    'label'       => 'Electrical and Computer Engineering',
+    'title'       => 'Upcoming Events',
+    'accent'      => '#4156A1',
+    'timezone'    => 'America/New_York',
+    'days'        => 45,
+    'limit'       => 12,
+    'cache_ttl'   => 1800,
+],
+```
+
+The browser accepts only the short `site` key. It never accepts a calendar ID
+or arbitrary URL, so the PHP endpoint cannot be used as an open proxy.
+
+---
+
 ## Keeping the caches warm
 
 Worth doing, and it takes two minutes.

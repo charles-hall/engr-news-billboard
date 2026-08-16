@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>NC State Events Slide</title>
+<title>NC State Department Events Slide</title>
 <meta name="viewport" content="width=1920, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<meta name="description" content="Digital signage slide showing upcoming events on NC State University's Centennial Campus.">
+<meta name="description" content="Digital signage slide showing upcoming events from an NC State department calendar.">
 
 <link rel="preload" href="assets/fonts/roboto-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/roboto-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -15,14 +15,14 @@
 </head>
 <body>
 
-<div id="stage" class="stage ev-stage" aria-live="polite">
+<div id="stage" class="stage ev-stage department-events" data-events-endpoint="api/department-events.php" aria-live="polite">
 
   <div class="rule-top" aria-hidden="true"></div>
 
   <header class="ev-header">
     <div>
-      <p id="evEyebrow" class="ev-eyebrow">NC State University</p>
-      <h1 id="evTitle" class="ev-title">Upcoming on Centennial Campus</h1>
+      <p id="evEyebrow" class="ev-eyebrow">NC State Computer Science</p>
+      <h1 id="evTitle" class="ev-title">Upcoming Events</h1>
     </div>
     <p id="evWindow" class="ev-window"></p>
   </header>
@@ -31,7 +31,7 @@
 
   <footer class="footer">
     <div class="footer-inner">
-      <span id="evSource" class="footer-source">More at calendar.ncsu.edu</span>
+      <span id="evSource" class="footer-source">Events from the NC State Computer Science calendar</span>
       <span id="evCount" class="footer-source"></span>
     </div>
   </footer>
