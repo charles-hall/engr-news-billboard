@@ -307,35 +307,6 @@ $cacheOnly = isset($_GET['cache']);
   </tr>
 </table>
 
-<h2>Department calendars</h2>
-<table>
-  <tr><th>Key</th><th>Calendar</th><th>Window</th><th>Fetch</th><th>Cache</th><th>Events kept</th></tr>
-<?php foreach (($config['department_events'] ?? []) as $key => $department):
-    $calendarId = (string) ($department['calendar_id'] ?? '');
-    $calendarUrl = 'https://calendar.google.com/calendar/ical/' . rawurlencode($calendarId) . '/public/basic.ics';
-    $departmentGlob = glob(rtrim($cacheDir, '/') . '/department-events-' . sha1((string) $key . '|' . (int) ($department['days'] ?? 45)) . '.json') ?: [];
-    $departmentAge = $departmentGlob !== [] ? time() - (int) filemtime($departmentGlob[0]) : null;
-    $departmentData = $departmentGlob !== []
-        ? json_decode((string) file_get_contents($departmentGlob[0]), true)
-        : null;
-    $departmentCount = is_array($departmentData) ? count($departmentData['events'] ?? []) : 0;
-    $calendarProbe = $cacheOnly
-        ? ['ok' => false, 'ms' => 0, 'bytes' => 0, 'body' => null]
-        : probe($calendarUrl, $timeout, 'text/calendar');
-?>
-  <tr>
-    <td><code><?= htmlspecialchars((string) $key) ?></code></td>
-    <td><?= htmlspecialchars((string) ($department['label'] ?? $key)) ?></td>
-    <td><?= (int) ($department['days'] ?? 45) ?> days</td>
-    <?php if ($cacheOnly): ?><td>not tested</td><?php else: echo cell($calendarProbe, $calendarProbe['ok'] ? number_format($calendarProbe['bytes'] / 1024) . ' KB' : ''); endif; ?>
-    <td class="<?= $departmentAge === null ? 'bad' : ($departmentAge < (int) ($department['cache_ttl'] ?? 1800) * 2 ? 'ok' : 'bad') ?>">
-      <?= $departmentAge === null ? 'none yet' : number_format($departmentAge) . 's old' ?>
-    </td>
-    <td class="<?= $departmentCount > 0 ? 'ok' : 'bad' ?>"><?= (int) $departmentCount ?></td>
-  </tr>
-<?php endforeach; ?>
-</table>
-
 <div class="note">
   <strong>Reading this.</strong> A failed REST cell is expected where the site is
   pinned to <code>rss</code>. A cell over eight seconds means that department's

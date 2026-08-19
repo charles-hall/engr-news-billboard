@@ -40,13 +40,6 @@
   color: var(--wolfpack-red);
 }
 
-/* Department calendars use their configured secondary-palette accent for the
-   department label and date chips. Wolfpack Red still opens and closes the
-   slide and anchors the header rule. */
-.department-events .ev-eyebrow {
-  color: var(--department-accent, var(--wolfpack-red));
-}
-
 .ev-title {
   margin: 0;
   font-family: "Roboto Condensed", Arial, sans-serif;

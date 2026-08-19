@@ -28,9 +28,6 @@ page backed by a small PHP proxy:
 3. **Events** (`events.html` agenda list, `events-cycle.html` one-at-a-time
    with photos) — upcoming events on Centennial Campus, pulled from NC
    State's Localist calendar at `calendar.ncsu.edu`.
-4. **Department events** (`department-events.html`) — an agenda from an
-   allowlisted public department Google Calendar. Computer Science (`?site=csc`)
-   and Electrical and Computer Engineering (`?site=ece`) are configured.
 
 Everything is styled to brand.ncsu.edu: Wolfpack Red anchoring every slide's
 top and bottom, Roboto/Roboto Condensed/Roboto Slab (self-hosted, no Google
@@ -60,8 +57,6 @@ fetches JSON from a PHP proxy under `api/`:
 - `api/instagram.php` — scrapes the Smash Balloon plugin's rendered HTML
 - `api/events.php` — reads Localist's public JSON API, geofences to
   Centennial Campus by venue coordinates (see "Why a bounding box" below)
-- `api/department-events.php` — reads public Google Calendar iCalendar feeds,
-  expands recurring events and applies exception dates/cancellations
 - `api/image.php` — serves Instagram images mirrored locally (see below)
 - `api/lib.php` — shared helpers: HTTP fetch with gzip handling, caching
   helpers, text cleanup (AP style, dash-tightening, HTML stripping)
@@ -96,11 +91,6 @@ here.
 
 **Change how many days ahead the events slides look, or which event types are
 excluded.** `config.php`'s `events` block — `days` and `exclude_types`.
-
-**Add a department events calendar.** Add an allowlisted entry under
-`department_events` in `config.php`, then add its key to
-`DEPARTMENT_EVENT_SITES` in `tools/warm.sh`. Never accept a raw calendar ID
-from the slide URL; `?site=` is the allowlisted public interface.
 
 **Force a slide to refetch immediately instead of waiting for its cache to
 expire.** Add `&refresh=1` to the proxy URL directly (e.g.

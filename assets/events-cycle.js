@@ -207,21 +207,6 @@
     return node;
   }
 
-  /**
-   * Shrink an overset headline until it fits its box, same budget as the
-   * news slide since the layout is identical.
-   */
-  function fitHeadline(el) {
-    var MAX = 78, MIN = 46, BUDGET = 380;
-    var size = MAX;
-    el.style.fontSize = size + 'px';
-    while (el.scrollHeight > BUDGET && size > MIN) {
-      size -= 2;
-      el.style.fontSize = size + 'px';
-    }
-    el.style.maxHeight = BUDGET + 'px';
-  }
-
   function render(data) {
     deck.innerHTML = '';
     dotsWrap.innerHTML = '';
@@ -239,13 +224,8 @@
 
     footerSource.textContent = 'More at calendar.ncsu.edu';
 
-    var ready = document.fonts && document.fonts.ready
-      ? document.fonts.ready
-      : Promise.resolve();
-
-    ready.then(function () {
-      slides.forEach(function (s) { fitHeadline(s.querySelector('.headline')); });
-    });
+    // Same fitter as the news slide, since the layout is identical.
+    NCStateFit.fitWhenReady(slides);
 
     hideStatus();
     index = 0;
@@ -256,6 +236,8 @@
 
   function show(i) {
     if (!slides.length) { return; }
+
+    NCStateFit.fit(slides[i]);
 
     slides.forEach(function (s, n) { s.classList.toggle('is-active', n === i); });
     Array.prototype.forEach.call(dotsWrap.children, function (d, n) {

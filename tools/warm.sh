@@ -24,7 +24,6 @@ BILLBOARD_URL="${BILLBOARD_URL:-https://billboard.engr.it/news-slides}"
 BILLBOARD_URL="${BILLBOARD_URL%/}"
 SITES="${SITES-csc ece mae ne ccee bme cbe mse ise engr}"
 IG_SITES="${IG_SITES-csc ece ccee}"
-DEPARTMENT_EVENT_SITES="${DEPARTMENT_EVENT_SITES-csc ece}"
 COUNT="${COUNT:-5}"
 
 # Must match cache_dir in config.php. Default is the deployment's own cache/
@@ -72,12 +71,6 @@ done
 if [ "${WARM_EVENTS:-1}" = "1" ]; then
     warm_one "events" "$BILLBOARD_URL/api/events.php?refresh=1"
 fi
-
-# Public Google Calendars are much larger than the Localist response (the CSC
-# feed carries its full history), so warm them out of band as well.
-for site in $DEPARTMENT_EVENT_SITES; do
-    warm_one "department-events:$site" "$BILLBOARD_URL/api/department-events.php?site=$site&refresh=1"
-done
 
 {
     echo "started   $started"

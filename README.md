@@ -21,7 +21,8 @@ white panel at the right under a short accent bar. Wolfpack Red bars close the t
 and bottom of the frame, with a progress line and story dots in the footer, so the
 core brand color still opens and closes every slide.
 
-- Headlines: Roboto Condensed Bold, auto-sized from 78px down to fit
+- Headlines: Roboto Condensed Bold, sized to the room the panel can spare
+  (see "Fitting the headline" below)
 - Abstract: Roboto Regular, 33px, clamped to five lines
 - Date: Roboto Slab, AP style ("Aug. 14, 2026")
 - Eyebrow: uppercase Roboto Condensed with wide tracking, a label treatment
@@ -32,6 +33,44 @@ When a story arrives, the accent bar draws itself in and each text line rises
 into place a beat after the one before; the active footer dot stretches into a
 short bar so the current position reads from across a room. All motion honors
 `prefers-reduced-motion`, falling back to simple fades.
+
+### Fitting the headline
+
+Department headlines run from four words to twenty, so `assets/fit.js` sizes
+each one to the space its panel can actually spare, rather than to a fixed
+budget. It is shared by the news slide and the cycling events slide, which use
+the same layout.
+
+The order it tries:
+
+1. Measure the room left after the eyebrow, date and abstract take what they
+   genuinely need. A three-line abstract hands its leftover space to the
+   headline, so most headlines keep the full 78px.
+2. Step the type down toward 44px until the text fits that room.
+3. If it still does not fit, reduce the abstract from five lines to four, then
+   three, and try the sizes again.
+4. Only if all of that fails, trim, and then to a whole number of lines.
+
+When the text fits, no ceiling is set at all, so the descenders on the last
+line are never shaved. `.headline` deliberately carries no `overflow: hidden`
+in CSS for that reason; the fitter applies it only in the trim case.
+
+The fit is re-run whenever a slide becomes active. A web font arriving after
+the first measurement would otherwise leave headlines sized against the
+fallback face, which is how a headline that measured as fitting can still
+render a line too tall.
+
+Two earlier bugs are worth knowing about, since both produced the same symptom
+on the wall, a headline sheared through the middle of its last line:
+
+- The budget was hardcoded to 380px while the panel had roughly 450px to give,
+  so headlines were trimmed with room to spare.
+- `.slide` used an implicit `auto` grid row, which is sized to its content. An
+  overlong headline stretched the row past the bottom of the frame and
+  inflated the panel height the fitter measured, so the longer the text ran,
+  the more room it appeared to have and the less it shrank. The row is now
+  pinned with `minmax(0, 1fr)`, and the fitter measures the slide rather than
+  the panel.
 
 ### Department accent colors
 
@@ -429,62 +468,6 @@ changes were needed in `tools/warm.sh`.
 
 ---
 
-## Department events from Google Calendar
-
-`department-events.html` is the department-specific agenda slide. Computer
-Science and Electrical and Computer Engineering are configured from their
-public Google Calendars:
-
-```
-https://billboard.engr.it/news-slides/department-events.html?site=csc&count=6
-https://billboard.engr.it/news-slides/department-events.html?site=ece&count=6
-```
-
-Billboard settings: 25 seconds, reload **Yes**. The layout is the same readable
-agenda used by `events.html`, but the department name and its configured accent
-color identify the source. CSC uses Innovation Blue and ECE uses Bio-Indigo,
-matching their news slides.
-
-The proxy reads Google's public iCalendar feed, so it needs no API key, OAuth
-client or signed-in account. It expands recurring events within the display
-window and honors `EXDATE`, moved occurrences and cancellations. Because the
-calendar feed contains its full history, `tools/warm.sh` refreshes it alongside
-the other feeds and the slide serves stale cached data during an upstream
-failure.
-
-### Department events URL parameters
-
-| Parameter | Default | Notes |
-| --- | --- | --- |
-| `site` | `csc` | Key from `config.php`'s `department_events` array |
-| `count` | `6` | Events to show, 1 to 8 |
-| `days` | department setting | How far ahead to look; CSC defaults to 45 days |
-| `refresh` | `900` | Seconds between display refreshes |
-| `title` | department setting | Override the headline |
-| `eyebrow` | department label | Override the department line |
-
-To add another department, confirm that its Google Calendar is public, then add
-an allowlisted entry to `department_events` in `config.php` and add its key to
-`DEPARTMENT_EVENT_SITES` in `tools/warm.sh`:
-
-```php
-'ece' => [
-    'calendar_id' => 'PUBLIC_CALENDAR_ID@group.calendar.google.com',
-    'label'       => 'Electrical and Computer Engineering',
-    'title'       => 'Upcoming Events',
-    'accent'      => '#4156A1',
-    'timezone'    => 'America/New_York',
-    'days'        => 45,
-    'limit'       => 12,
-    'cache_ttl'   => 1800,
-],
-```
-
-The browser accepts only the short `site` key. It never accepts a calendar ID
-or arbitrary URL, so the PHP endpoint cannot be used as an open proxy.
-
----
-
 ## Keeping the caches warm
 
 Worth doing, and it takes two minutes.
@@ -731,6 +714,11 @@ problem is server side.
 **Headlines look wrong or fall back to Arial**
 Confirm `assets/fonts/` deployed. Some SFTP clients skip `.woff2` files.
 
+**A headline is cut off or runs under the date**
+Confirm `assets/fit.js` deployed and that `index.html` loads it before
+`slide.js`; without it the headline keeps its full 78px and overruns. See
+"Fitting the headline" above for how the sizing works.
+
 **Stories are out of date**
 The feed cache is ten minutes and the page refreshes every ten. Force a fresh pull
 with `api/feed.php?site=csc&refresh=1`.
@@ -750,6 +738,7 @@ events.html            the events slide (agenda list)
 events-cycle.html      the events slide (cycling photo variant)
 assets/slide.css       layout and brand styling, shared stage
 assets/slide.js        news fetch, rotation, scaling, AP dates
+assets/fit.js          sizes headlines to the panel, shared by both slide types
 assets/instagram.css   Instagram grid styling
 assets/instagram.js    Instagram fetch and rendering
 assets/events.css      agenda styling

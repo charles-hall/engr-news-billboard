@@ -103,6 +103,15 @@ html, body {
   inset: 0;
   display: grid;
   grid-template-columns: var(--media-width) 1fr;
+  /*
+   * minmax(0, 1fr), not the implicit `auto`. An auto row is sized to its
+   * content, so an overlong headline stretched the row past the bottom of
+   * the frame and, worse, inflated the panel height that assets/fit.js
+   * measures to decide whether that headline fits: the longer the text, the
+   * more room it appeared to have. Pinning the row to the slide breaks that
+   * loop and keeps content off the footer.
+   */
+  grid-template-rows: minmax(0, 1fr);
   opacity: 0;
   transition: opacity 700ms ease-in-out;
   will-change: opacity;
@@ -186,6 +195,7 @@ html, body {
   align-items: center;
   padding: 64px 80px;
   min-width: 0;
+  min-height: 0;   /* grid items default to min-content; let it be constrained */
 }
 
 /* The two panels are the same opaque color, so a plain cross-dissolve would
@@ -260,6 +270,10 @@ html, body {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--dept-accent, var(--wolfpack-red));
+  /* "Civil, Construction and Environmental Engineering" needs two lines at
+     this size. Balanced, it splits evenly instead of leaving one word
+     stranded on the second line. */
+  text-wrap: balance;
 }
 
 .stage.theme-dark .eyebrow { color: var(--white); }
@@ -272,9 +286,13 @@ html, body {
   line-height: 1.06;
   letter-spacing: -0.005em;
   color: var(--headline-color);
-  overflow: hidden;
   overflow-wrap: break-word;
   text-wrap: balance;
+  /* No `overflow: hidden` here on purpose. assets/fit.js sizes the type to
+     the space available, so there is nothing to hide, and hiding it would
+     shave the descenders off the last line (the tail of a "y" or "g" sits a
+     few pixels below its line box). The fitter sets overflow itself in the
+     one case where it has to trim. */
 }
 
 /* Roboto Slab is the brand's secondary face for captions and standalone
