@@ -5,7 +5,7 @@
 
    URL parameters (all optional):
      site=csc            key from config.php  (default: csc)
-     count=5             number of stories    (1-12)
+     count=5             number of stories    (1-15)
      dwell=12            seconds per story
      theme=light|dark    default light
      refresh=600         seconds between feed refreshes
@@ -25,7 +25,7 @@
 
   var CONFIG = {
     site:     (params.get('site') || 'csc').toLowerCase().replace(/[^a-z0-9_-]/g, ''),
-    count:    clamp(parseInt(params.get('count'), 10) || 5, 1, 12),
+    count:    clamp(parseInt(params.get('count'), 10) || 5, 1, 15),
     dwell:    clamp(parseFloat(params.get('dwell')) || 12, 4, 120),
     theme:    params.get('theme') === 'dark' ? 'dark' : 'light',
     refresh:  clamp(parseInt(params.get('refresh'), 10) || 600, 60, 86400),

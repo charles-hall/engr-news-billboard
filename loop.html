@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NC State News and Instagram Loop</title>
+<meta name="viewport" content="width=1920, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="Digital signage loop that cycles a department's latest news stories with its Instagram wall shown between them.">
+
+<link rel="preload" href="assets/fonts/roboto-condensed-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/roboto-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/fonts.css">
+<link rel="stylesheet" href="assets/slide.css">
+<link rel="stylesheet" href="assets/instagram.css">
+<link rel="stylesheet" href="assets/loop.css">
+</head>
+<body>
+
+<!--
+  The news slide's stage, with the Instagram wall layered over it as one more
+  slide. loop.js decides which is showing; the news deck underneath keeps its
+  own red rules, footer and dots exactly as index.html does.
+-->
+<div id="stage" class="stage" aria-live="polite">
+
+  <div class="rule-top" aria-hidden="true"></div>
+
+  <div id="deck" class="deck"><!-- news slides injected here --></div>
+
+  <footer class="footer">
+    <div id="progress" class="progress" aria-hidden="true"></div>
+    <div class="footer-inner">
+      <span id="footerSource" class="footer-source">NC State University</span>
+      <nav id="dots" class="dots" aria-label="Story position"></nav>
+    </div>
+  </footer>
+
+  <section id="igSlide" class="ig-slide" aria-label="Recent Instagram posts">
+    <header class="ig-header">
+      <div>
+        <p id="igEyebrow" class="ig-eyebrow">NC State University</p>
+        <h1 id="igHandle" class="ig-handle">@ncstate</h1>
+      </div>
+      <p class="ig-kicker">Latest on Instagram</p>
+    </header>
+
+    <div id="igGrid" class="ig-grid"><!-- cards injected here --></div>
+
+    <footer class="ig-footer">
+      <span id="igFollow" class="ig-follow">Follow along at instagram.com/ncstate</span>
+    </footer>
+  </section>
+
+</div>
+
+<template id="slideTemplate">
+  <article class="slide">
+    <div class="media">
+      <img class="media-img" alt="" decoding="async">
+      <div class="media-fallback" aria-hidden="true"><span>Think and Do</span></div>
+    </div>
+    <div class="panel">
+      <div class="panel-inner">
+        <span class="accent" aria-hidden="true"></span>
+        <p class="eyebrow"></p>
+        <h1 class="headline"></h1>
+        <p class="date"></p>
+        <p class="abstract"></p>
+      </div>
+    </div>
+  </article>
+</template>
+
+<template id="igCardTemplate">
+  <article class="ig-card">
+    <div class="ig-photo">
+      <img class="ig-img" alt="" decoding="async">
+    </div>
+    <div class="ig-meta">
+      <p class="ig-caption"></p>
+      <p class="ig-date"></p>
+    </div>
+  </article>
+</template>
+
+<script src="assets/fit.js"></script>
+<script src="assets/loop.js"></script>
+</body>
+</html>

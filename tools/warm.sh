@@ -25,6 +25,10 @@ BILLBOARD_URL="${BILLBOARD_URL%/}"
 SITES="${SITES-csc ece mae ne ccee bme cbe mse ise engr}"
 IG_SITES="${IG_SITES-csc ece ccee}"
 COUNT="${COUNT:-5}"
+# The news and Instagram loop (loop.html) asks for 15 stories. The feed cache is
+# keyed on count, so those sites need their own warm-up at that count.
+LOOP_SITES="${LOOP_SITES-csc}"
+LOOP_COUNT="${LOOP_COUNT:-15}"
 
 # Must match cache_dir in config.php. Default is the deployment's own cache/
 # directory, since a PHP-FPM restart wipes anything under a PrivateTmp /tmp.
@@ -61,6 +65,10 @@ started=$(date '+%Y-%m-%d %H:%M:%S %Z')
 
 for site in $SITES; do
     warm_one "news:$site" "$BILLBOARD_URL/api/feed.php?site=$site&count=$COUNT&refresh=1"
+done
+
+for site in $LOOP_SITES; do
+    warm_one "loop:$site" "$BILLBOARD_URL/api/feed.php?site=$site&count=$LOOP_COUNT&refresh=1"
 done
 
 for site in $IG_SITES; do

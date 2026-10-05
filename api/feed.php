@@ -49,7 +49,7 @@ if (!preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?
 }
 
 $count = isset($_GET['count']) ? (int) $_GET['count'] : (int) $config['default_count'];
-$count = max(1, min(12, $count));
+$count = max(1, min(15, $count));
 
 $requireImage = isset($_GET['require_image'])
     ? filter_var($_GET['require_image'], FILTER_VALIDATE_BOOLEAN)

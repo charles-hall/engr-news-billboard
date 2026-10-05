@@ -161,7 +161,7 @@ name.
 | Parameter | Default | Notes |
 | --- | --- | --- |
 | `site` | `csc` | Key from `config.php`, see the department table above |
-| `count` | `5` | Stories in the deck, 1 to 12 |
+| `count` | `5` | Stories in the deck, 1 to 15 |
 | `dwell` | `12` | Seconds per story, 4 to 120 |
 | `theme` | `light` | `light` or `dark` |
 | `refresh` | `600` | Seconds between feed refreshes. New stories appear at the top of the next pass |
@@ -338,6 +338,67 @@ Captions are trimmed: trailing hashtag blocks and "link in bio" tails are
 removed, but hashtags used mid-sentence are kept, because deleting `#NCStateCS`
 from "Congrats to #NCStateCS student ..." breaks the sentence. Set
 `clean_captions` to `false` in `config.php` for verbatim captions.
+
+---
+
+## The news and Instagram loop
+
+One URL that cycles a department's 15 most recent stories and brings up its
+Instagram wall between them, so a display that runs a single department does
+not need two billboard entries.
+
+```
+https://billboard.engr.it/news-slides/loop.html?site=csc
+```
+
+The running order with the defaults:
+
+```
+stories 1-5, Instagram, stories 6-10, Instagram, stories 11-15, Instagram
+```
+
+That is 15 stories at 12 seconds plus three Instagram walls at 15 seconds,
+**225 seconds** per pass.
+
+Billboard settings:
+
+| Field | Value |
+| --- | --- |
+| URL | `https://billboard.engr.it/news-slides/loop.html?site=csc` |
+| Title | Computer Science News and Instagram |
+| Number of seconds to display slide | `225` |
+| Do you want the slide to reload after it has been displayed? | **Yes** |
+
+If you change the parameters, the duration is
+`count x dwell + (count / every, rounded down) x igdwell`.
+
+It reuses everything the other two slides already have: the news stories are
+the same layout, fitter and proxy as `index.html`, and the wall is the same
+design and proxy as `instagram.html`, layered over the stage as one more slide.
+Instagram is treated as optional. If its feed is unavailable the loop runs as
+news alone and picks the wall back up at the next refresh, so it degrades to
+`index.html` rather than to an error card.
+
+Refreshed stories and posts are held until the top of the next pass, so nothing
+changes mid-story. The site needs an entry in both `sites` and `instagram` in
+`config.php`; today that is `csc`, `ece` and `ccee`.
+
+### Loop URL parameters
+
+| Parameter | Default | Notes |
+| --- | --- | --- |
+| `site` | `csc` | Key from `config.php` |
+| `count` | `15` | Stories, 1 to 15 |
+| `dwell` | `12` | Seconds per story |
+| `every` | `5` | Show the Instagram wall after every N stories. `0` turns it off |
+| `igdwell` | `15` | Seconds the Instagram wall stays up |
+| `igcount` | `4` | Instagram posts on the wall, 1 to 6 |
+| `theme`, `refresh`, `category`, `tag`, `kenburns` | | As for the news slide |
+| `label` | none | Override the small line above the Instagram handle |
+
+The feed cache is keyed on the story count, so `tools/warm.sh` warms
+`count=15` separately for each key in `LOOP_SITES` (default `csc`). Add `ece`
+or `ccee` there when either department gets a loop of its own.
 
 ---
 
@@ -734,6 +795,7 @@ featured image URL is returning an error. Check it directly.
 ```
 index.html             the news slide
 instagram.html         the Instagram slide
+loop.html              news and Instagram in one loop
 events.html            the events slide (agenda list)
 events-cycle.html      the events slide (cycling photo variant)
 assets/slide.css       layout and brand styling, shared stage
@@ -741,6 +803,8 @@ assets/slide.js        news fetch, rotation, scaling, AP dates
 assets/fit.js          sizes headlines to the panel, shared by both slide types
 assets/instagram.css   Instagram grid styling
 assets/instagram.js    Instagram fetch and rendering
+assets/loop.css        layers the Instagram wall over the news stage
+assets/loop.js         news and Instagram fetch, interleaved rotation
 assets/events.css      agenda styling
 assets/events.js       events fetch, AP dates and times (agenda list)
 assets/events-cycle.js events fetch, rotation, AP dates (cycling variant; reuses slide.css)

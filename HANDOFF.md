@@ -16,7 +16,7 @@ points you at the right section of that when you need depth.
 ## What this is
 
 Custom digital signage slides for `billboard.ncsu.edu`, the College of
-Engineering's lobby display system. Three slide types, each a static HTML
+Engineering's lobby display system. Four slide types, each a static HTML
 page backed by a small PHP proxy:
 
 1. **News** (`index.html`) — cycles the latest WordPress posts from a
@@ -28,6 +28,9 @@ page backed by a small PHP proxy:
 3. **Events** (`events.html` agenda list, `events-cycle.html` one-at-a-time
    with photos) — upcoming events on Centennial Campus, pulled from NC
    State's Localist calendar at `calendar.ncsu.edu`.
+4. **News and Instagram loop** (`loop.html`) — the 15 most recent stories
+   from one department with its Instagram wall after every fifth story.
+   Built from the news and Instagram pieces above; see README.
 
 Everything is styled to brand.ncsu.edu: Wolfpack Red anchoring every slide's
 top and bottom, Roboto/Roboto Condensed/Roboto Slab (self-hosted, no Google

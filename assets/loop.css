@@ -1,0 +1,39 @@
+/* ==========================================================================
+   NC State Billboard News and Instagram Loop
+   Layers the Instagram wall (instagram.css) over the news stage (slide.css)
+   as one more slide in the rotation. Only the differences live here.
+   ========================================================================== */
+
+/* The Instagram wall covers the whole stage, red rules and footer included,
+   so it reads as its own slide rather than a panel inside the news layout. */
+.ig-slide {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: var(--wolfpack-red);
+  display: flex;
+  flex-direction: column;
+  padding: 56px 56px 44px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 700ms ease-in-out, visibility 0s linear 700ms;
+}
+
+.ig-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 700ms ease-in-out, visibility 0s linear 0s;
+}
+
+/* instagram.css plays the card stagger once, when the cards are inserted.
+   Here the wall comes back several times a loop, so the stagger is tied to
+   the slide becoming active instead. Changing animation-name restarts it;
+   the per-card delays from instagram.css still apply. */
+.ig-slide .ig-card { animation-name: none; }
+.ig-slide.is-active .ig-card { animation-name: card-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-slide,
+  .ig-slide.is-active { transition: none; }
+  .ig-slide.is-active .ig-card { animation: none; opacity: 1; }
+}
