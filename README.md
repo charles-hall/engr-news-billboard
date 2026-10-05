@@ -372,6 +372,29 @@ Billboard settings:
 If you change the parameters, the duration is
 `count x dwell + (count / every, rounded down) x igdwell`.
 
+### Changing the speed
+
+Speed is set in the billboard entry's URL, so no code change, push or Plesk
+deploy is needed. `dwell` is the seconds per story and `igdwell` the seconds
+the Instagram wall stays up. Then set the billboard's display time to match,
+or the loop is cut off early or partly repeats:
+
+```
+display seconds = 15 x dwell + 3 x igdwell
+```
+
+| Pace | URL | Display seconds |
+| --- | --- | --- |
+| Default | `loop.html?site=csc` | `225` |
+| A bit faster | `loop.html?site=csc&dwell=9&igdwell=12` | `171` |
+| Faster | `loop.html?site=csc&dwell=8&igdwell=10` | `150` |
+
+Nine seconds still leaves time to read a headline and most of a summary from
+across a lobby. At eight, the longer five-line summaries are hard to finish.
+
+The formula assumes the defaults of 15 stories and the wall after every fifth.
+If you change `count` or `every`, use the general one above.
+
 It reuses everything the other two slides already have: the news stories are
 the same layout, fitter and proxy as `index.html`, and the wall is the same
 design and proxy as `instagram.html`, layered over the stage as one more slide.
